@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Opu Light</title>
+    
+    <!-- PWA / iOS Standalone App -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HED">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        .dashboard {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 14px;
+            padding-top: max(12px, env(safe-area-inset-top));
+        }
+        
+        .dash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .dash-title { font-size: 16px; font-weight: 600; }
+        .dash-date { font-size: 12px; opacity: 0.9; }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .stat {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 8px 6px;
+            text-align: center;
+        }
+        
+        .stat-value { font-size: 18px; font-weight: 700; }
+        .stat-label { font-size: 9px; opacity: 0.8; text-transform: uppercase; }
+        
+        .progress-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .progress-item { flex: 1; }
+        .progress-label { font-size: 9px; opacity: 0.8; margin-bottom: 2px; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+        .progress-fill { height: 100%; background: white; border-radius: 2px; transition: width 0.3s; }
+        .progress-fill.protein { background: #90EE90; }
+        .progress-fill.sodium { background: #FFB6C1; }
+        
+        .status-row {
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .status-chip {
+            background: rgba(255,255,255,0.15);
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+        
+        .deficit { color: #90EE90; }
+        .over { color: #FFB6C1; }
+        
+        .copy-btn {
+            background: rgba(255,255,255,0.25);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        
+        .copy-btn:active { background: rgba(255,255,255,0.4); }
+        
+        .workout-btn {
+            background: rgba(255,255,255,0.3);
+            border: 2px solid rgba(255,255,255,0.6);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .workout-btn.done {
+            background: rgba(76,175,80,0.8);
+            border-color: rgba(76,175,80,1);
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #666;
+        }
+        
+        .tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
+        
+        /* Content */
+        .content { flex: 1; overflow-y: auto; }
+        .pane { display: none; padding: 10px; }
+        .pane.active { display: block; }
+        
+        /* Summary */
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .summary-list { font-size: 12px; }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .summary-item:last-child { border-bottom: none; }
+        
+        .item-left { display: flex; align-items: center; gap: 6px; flex: 1; }
+        .item-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .item-dot.food { background: #4CAF50; }
+        .item-dot.exercise { background: #2196F3; }
+        .item-name { flex: 1; }
+        .item-values { color: #666; font-size: 11px; }
+        .item-delete { background: none; border: none; color: #ccc; font-size: 16px; padding: 0 4px; cursor: pointer; }
+        .item-delete:hover { color: #f44336; }
+        
+        .no-entries { color: #999; text-align: center; padding: 20px; font-size: 13px; }
+        
+        /* Quick buttons */
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            margin: 12px 0 8px 0;
+        }
+        
+        .quick-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .qbtn {
+            background: #f5f5f5;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .qbtn:active { background: #e8e8e8; }
+        .qbtn.food { border-left: 3px solid #4CAF50; }
+        .qbtn.exercise { border-left: 3px solid #2196F3; }
+        .qbtn.action { background: #E8F0FE; border-left: 3px solid #4285F4; }
+        .qbtn.photo { background: #FFF3E0; border-left: 3px solid #FF9800; }
+        
+        .qbtn-cal { color: #888; font-size: 10px; }
+        
+        /* Input bar */
+        .input-bar {
+            background: white;
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 8px;
+            padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px));
+            position: sticky;
+            bottom: 0;
+        }
+        
+        .input-field {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .input-field:focus { border-color: #667eea; }
+        
+        .input-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .input-btn.add { background: #667eea; color: white; }
+        .input-btn.photo { background: #FF9800; color: white; }
+        
+        /* History */
+        .history-card {
+            background: white;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        
+        .history-date {
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .history-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            font-size: 11px;
+            text-align: center;
+        }
+        
+        .history-stat-value { font-weight: 600; font-size: 14px; }
+        .history-stat-label { color: #888; font-size: 9px; }
+        .history-stat.good .history-stat-value { color: #4CAF50; }
+        .history-stat.bad .history-stat-value { color: #f44336; }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.open { display: flex; }
+        
+        .modal-box {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            width: 90%;
+            max-width: 320px;
+        }
+        
+        .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+        
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+        
+        .modal-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .modal-btn.cancel { background: #f0f0f0; }
+        .modal-btn.save { background: #667eea; color: white; }
+        
+        .photo-preview { max-width: 100%; max-height: 150px; border-radius: 8px; margin-bottom: 10px; }
+        
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 200;
+            display: none;
+        }
+        
+        .toast.show { display: block; }
+        
+        /* Survey toggle buttons */
+        .survey-toggle {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            background: white;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .survey-toggle.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        .survey-toggle.positive.active {
+            border-color: #4CAF50;
+            background: #4CAF50;
+        }
+        .survey-toggle.negative.active {
+            border-color: #f44336;
+            background: #f44336;
+        }
+        
+        /* Hidden */
+        #photoInput, #cameraInput { display: none; }
+    </style>
+</head>
+<body>
+    <!-- Dashboard -->
+    <div class="dashboard">
+        <div class="dash-header">
+            <span class="dash-title">Opu Light <span style="font-size:10px;opacity:0.7;">v3</span></span>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="location.reload()" style="width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">↻</button>
+                <button id="syncStatus" onclick="googleSignIn()" style="width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">👤</button>
+                <span class="dash-date" id="dateDisplay"></span>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat" style="flex:1.5;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:12px;">
+                <div class="stat-value" id="owiScore" style="font-size:32px;">--</div>
+                <div class="stat-label" id="owiRating">OWI SCORE</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="calIn">0</div>
+                <div class="stat-label">CAL IN</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="protein">0g</div>
+                <div class="stat-label">PROTEIN</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="net">0</div>
+                <div class="stat-label">NET CAL</div>
+            </div>
+        </div>
+        <!-- OWI Component Bars -->
+        <div class="progress-row" style="margin-bottom:4px;">
+            <div class="progress-item">
+                <div class="progress-label" style="font-size:9px;">Diet <span id="dietPct">0</span></div>
+                <div class="progress-bar" style="height:4px;"><div class="progress-fill" id="dietBar" style="width:0%;background:#4CAF50;"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label" style="font-size:9px;">Exercise <span id="exPct">0</span></div>
+                <div class="progress-bar" style="height:4px;"><div class="progress-fill" id="exBar" style="width:0%;background:#2196F3;"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label" style="font-size:9px;">Survey <span id="surveyPct">0</span></div>
+                <div class="progress-bar" style="height:4px;"><div class="progress-fill" id="surveyBar" style="width:0%;background:#FF9800;"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label" style="font-size:9px;">Body <span id="bodyPct">0</span></div>
+                <div class="progress-bar" style="height:4px;"><div class="progress-fill" id="bodyBar" style="width:0%;background:#9C27B0;"></div></div>
+            </div>
+        </div>
+        <div class="progress-row">
+            <div class="progress-item">
+                <div class="progress-label">Calories <span id="calPct">0</span>%</div>
+                <div class="progress-bar"><div class="progress-fill" id="calBar" style="width:0%"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label">Protein <span id="worPct">0</span>%</div>
+                <div class="progress-bar"><div class="progress-fill protein" id="worBar" style="width:0%"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label">Sodium <span id="sodiumPct">0</span>%</div>
+                <div class="progress-bar"><div class="progress-fill sodium" id="sodiumBar" style="width:0%"></div></div>
+            </div>
+        </div>
+        <!-- New nutrient bars -->
+        <div class="progress-row">
+            <div class="progress-item">
+                <div class="progress-label">Fiber <span id="fiberPct">0</span>%</div>
+                <div class="progress-bar"><div class="progress-fill" id="fiberBar" style="width:0%;background:#8BC34A;"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label">Sat Fat <span id="satFatPct">0</span>%</div>
+                <div class="progress-bar"><div class="progress-fill" id="satFatBar" style="width:0%;background:#FF5722;"></div></div>
+            </div>
+            <div class="progress-item">
+                <div class="progress-label">Omega <span id="omegaScore">0</span></div>
+                <div class="progress-bar"><div class="progress-fill" id="omegaBar" style="width:0%;background:#00BCD4;"></div></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="showPane('today')">Today</button>
+        <button class="tab" onclick="showPane('add')">Add</button>
+        <button class="tab" onclick="showPane('plan')">Exercise</button>
+        <button class="tab" onclick="showPane('history')">History</button>
+    </div>
+    
+    <!-- Content -->
+    <div class="content">
+        <!-- Today Pane -->
+        <div class="pane active" id="todayPane">
+            <!-- Goals Section -->
+            <div class="summary-card" style="margin-bottom:10px;">
+                <div class="summary-header">🎯 Daily Goals</div>
+                <div style="display:flex;justify-content:space-around;padding:8px 0;font-size:12px;">
+                    <div style="text-align:center;">
+                        <div style="font-weight:600;" id="goalCal">0/1600</div>
+                        <div style="color:#666;font-size:10px;">Net Cal</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-weight:600;" id="goalProtein">0/110g</div>
+                        <div style="color:#666;font-size:10px;">Protein</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-weight:600;" id="goalSodium">0/2300mg</div>
+                        <div style="color:#666;font-size:10px;">Sodium</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-weight:600;" id="goalSteps">0/7500</div>
+                        <div style="color:#666;font-size:10px;">Steps</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Today's Log -->
+            <div class="summary-card">
+                <div class="summary-header">
+                    <span>Today's Log</span>
+                    <div style="display:flex;gap:4px;">
+                        <button class="qbtn action" onclick="copySummary()" style="font-size:10px;padding:4px 8px;">📋 Summary</button>
+                        <button class="qbtn action" onclick="copyFull()" style="font-size:10px;padding:4px 8px;">📋 Full</button>
+                    </div>
+                </div>
+                <div class="summary-list" id="logList">
+                    <div class="no-entries">No entries yet</div>
+                </div>
+            </div>
+            
+            <!-- Nutrition Summary -->
+            <div class="summary-card" style="margin-top:10px;">
+                <div class="summary-header">
+                    <span>📊 Summary</span>
+                    <button class="qbtn action" onclick="copyDaySummary()" style="font-size:10px;padding:4px 8px;">📋 Copy</button>
+                </div>
+                <div id="nutritionSummary" style="font-size:12px;padding:8px 0;">
+                    <!-- Weight Section -->
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;background:#f8f9ff;margin:-8px -12px 8px -12px;padding:8px 12px;">
+                        <span style="font-weight:600;">⚖️ Current Weight</span>
+                        <span id="weightDisplay" style="font-weight:600;color:#667eea;">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;">
+                        <span>Weight Trend (7 days)</span>
+                        <span id="weightTrend">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;">
+                        <span>Waist</span>
+                        <span id="waistDisplay">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;">
+                        <span>Workout Streak</span>
+                        <span id="workoutStreak">--</span>
+                    </div>
+                    
+                    <!-- Survey Status -->
+                    <div style="margin-top:10px;padding-top:8px;border-top:2px solid #eee;">
+                        <div style="font-weight:600;margin-bottom:6px;">📋 Today's Surveys</div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;" onclick="showMorningSurveyManual()" style="cursor:pointer;">
+                            <span>🌅 Morning (Sleep)</span>
+                            <span id="surveyMorningStatus" style="color:#999;">Not done</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;" onclick="showEveningSurveyManual()" style="cursor:pointer;">
+                            <span>🌙 Evening</span>
+                            <span id="surveyEveningStatus" style="color:#999;">Not done</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Today's Opu Nutrients -->
+                    <div style="margin-top:10px;padding-top:8px;border-top:2px solid #eee;">
+                        <div style="font-weight:600;margin-bottom:6px;">Today's Nutrients</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">
+                            <div style="display:flex;justify-content:space-between;"><span>Fiber</span><span id="fiberToday">0/25g</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Sat Fat</span><span id="satFatToday">0/18g</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Total Fat</span><span id="fatToday">0g</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Omega Score</span><span id="omegaToday">0</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Vegetables</span><span id="vegToday">0</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Processed</span><span id="processedToday">0</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Other Nutrients -->
+                    <div style="margin-top:10px;padding-top:8px;border-top:2px solid #eee;">
+                        <div style="font-weight:600;margin-bottom:6px;">Other Nutrients*</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">
+                            <div style="display:flex;justify-content:space-between;"><span>Sugar</span><span id="sugarToday">0/25g</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Potassium</span><span id="potassiumToday">0/3500mg</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Calcium</span><span id="calciumToday">0/1000mg</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Iron</span><span id="ironToday">0/8mg</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Vitamin D</span><span id="vitDToday">0/800IU</span></div>
+                            <div style="display:flex;justify-content:space-between;"><span>Magnesium</span><span id="magnesiumToday">0/420mg</span></div>
+                        </div>
+                        <div style="font-size:9px;color:#999;margin-top:6px;">*Estimates based on visual/textual food analysis</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add Pane -->
+        <div class="pane" id="addPane">
+            <!-- Sync buttons at top -->
+            <div class="quick-grid" style="margin-bottom:12px;">
+                <button class="qbtn action" onclick="refreshFromSheets()">☁️ Refresh</button>
+                <button class="qbtn action" onclick="syncSteps()">🔄 Sync Steps</button>
+                <button class="qbtn action" onclick="syncWeight()">⚖️ Sync Weight</button>
+            </div>
+            
+            <div class="section-title">🍽️ FOOD 
+                <span style="float:right;font-size:10px;">
+                    <span id="foodSizeToggle" onclick="toggleFoodSize()" style="color:#667eea;cursor:pointer;">All ▼</span>
+                    <span style="color:#ccc;margin:0 4px;">|</span>
+                    <span id="foodSortToggle" onclick="toggleFoodSort()" style="color:#667eea;cursor:pointer;">Recent</span>
+                </span>
+            </div>
+            <div class="quick-grid" id="foodButtonsQuick"></div>
+            <div class="quick-grid" id="foodButtonsFull" style="display:none;"></div>
+            
+            <div class="section-title">💪 EXERCISE
+                <span style="float:right;font-size:10px;">
+                    <span id="exSizeToggle" onclick="toggleExSize()" style="color:#667eea;cursor:pointer;">All ▼</span>
+                    <span style="color:#ccc;margin:0 4px;">|</span>
+                    <span id="exSortToggle" onclick="toggleExSort()" style="color:#667eea;cursor:pointer;">Recent</span>
+                </span>
+            </div>
+            <div class="quick-grid" id="exerciseButtonsQuick"></div>
+            <div class="quick-grid" id="exerciseButtonsFull" style="display:none;"></div>
+        </div>
+        
+        <!-- Plan Pane -->
+        <div class="pane" id="planPane">
+            <div class="summary-card">
+                <div class="summary-header">📅 Weekly Exercise Plan</div>
+                <p style="font-size:11px;color:#666;margin-bottom:10px;">6-day rotation. Workout 10-11am (8-9am if calls). Sunday rest.</p>
+            </div>
+            
+            <!-- Pilates Home - 3X/week -->
+            <div class="summary-card" id="pilatesCard">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span style="font-weight:600;color:#667eea;">🧘 Pilates Home</span>
+                        <span style="font-size:11px;color:#888;margin-left:8px;">3X/week minimum</span>
+                    </div>
+                    <span style="color:#4CAF50;font-weight:600;">90 cal</span>
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:4px;">15-20 min. Complete every day before main workout.</div>
+                <div id="pilatesExercises" style="margin-top:8px;font-size:11px;display:none;"></div>
+            </div>
+            
+            <div id="planList"></div>
+        </div>
+        
+        <!-- History Pane -->
+        <div class="pane" id="historyPane">
+            <div id="historyList"></div>
+        </div>
+    </div>
+    
+    <!-- Input Bar -->
+    <div class="input-bar">
+        <input type="text" class="input-field" id="inputField" placeholder="Paste: Saba Set 650cal 35g">
+        <button class="input-btn add" onclick="parseInput()">▶</button>
+    </div>
+    
+    <!-- Hidden inputs -->
+    <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(event)" style="display:none;">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="handlePhoto(event)" style="display:none;">
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- Custom Food Modal -->
+    <div class="modal" id="customModal">
+        <div class="modal-box">
+            <div class="modal-title">Add Custom Food</div>
+            <input type="text" class="modal-input" id="customName" placeholder="Food name">
+            <input type="number" class="modal-input" id="customCal" placeholder="Calories">
+            <input type="number" class="modal-input" id="customPro" placeholder="Protein (g)">
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeModal('customModal')">Cancel</button>
+                <button class="modal-btn save" onclick="saveCustom()">Add</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Photo Modal -->
+    <div class="modal" id="photoModal">
+        <div class="modal-box">
+            <div class="modal-title">Log Meal</div>
+            <img id="photoPreview" class="photo-preview" style="display:none">
+            <input type="text" class="modal-input" id="photoName" placeholder="Meal name">
+            <input type="number" class="modal-input" id="photoCal" placeholder="Calories">
+            <input type="number" class="modal-input" id="photoPro" placeholder="Protein (g)">
+            <p style="font-size:11px;color:#888;margin-bottom:12px;">💡 Send photo to Claude for estimate</p>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeModal('photoModal')">Cancel</button>
+                <button class="modal-btn save" onclick="savePhoto()">Add</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Steps Modal -->
+    <div class="modal" id="stepsModal">
+        <div class="modal-box">
+            <div class="modal-title">Manual Steps</div>
+            <input type="number" class="modal-input" id="stepsInput" placeholder="Number of steps">
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeModal('stepsModal')">Cancel</button>
+                <button class="modal-btn save" onclick="saveManualSteps()">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Morning Survey Modal -->
+    <div class="modal" id="morningSurveyModal">
+        <div class="modal-box">
+            <div class="modal-title">🌅 Morning Check-in</div>
+            <p style="font-size:12px;color:#666;margin-bottom:12px;" id="morningDateLabel">How did you sleep last night?</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <button class="modal-btn" onclick="submitMorningSurvey('7+')" style="background:#4CAF50;color:white;padding:12px;">😴 7+ hours (+100)</button>
+                <button class="modal-btn" onclick="submitMorningSurvey('5-7')" style="background:#FF9800;color:white;padding:12px;">😐 5-7 hours (0)</button>
+                <button class="modal-btn" onclick="submitMorningSurvey('<5')" style="background:#f44336;color:white;padding:12px;">😫 Less than 5 hours (-100)</button>
+            </div>
+            <div style="margin-top:12px;text-align:center;">
+                <a href="#" onclick="showBackfillMorning();return false;" style="font-size:11px;color:#667eea;">Answer for yesterday instead</a>
+            </div>
+            <div class="modal-btns" style="margin-top:12px;">
+                <button class="modal-btn cancel" onclick="skipMorningSurvey()">Skip for now</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Evening Survey Modal -->
+    <div class="modal" id="eveningSurveyModal">
+        <div class="modal-box">
+            <div class="modal-title">🌙 Evening Check-in</div>
+            <p style="font-size:12px;color:#666;margin-bottom:12px;" id="eveningDateLabel">How was your day?</p>
+            
+            <p style="font-size:11px;color:#4CAF50;margin:8px 0 4px 0;font-weight:600;">Positive (tap if yes):</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+                <button class="survey-toggle" id="toggleMeditation" onclick="toggleSurvey('meditation')">🧘 Meditation (+100)</button>
+                <button class="survey-toggle" id="toggleSocial" onclick="toggleSurvey('social')">👥 Social (+50)</button>
+                <button class="survey-toggle" id="toggleOutdoors" onclick="toggleSurvey('outdoors')">🌳 Outdoors (+50)</button>
+            </div>
+            
+            <p style="font-size:11px;color:#f44336;margin:8px 0 4px 0;font-weight:600;">Negative (tap if yes):</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+                <button class="survey-toggle" id="toggleSmoked" onclick="toggleSurvey('smoked')">🚬 Smoked (-100)</button>
+                <button class="survey-toggle" id="toggleAlcohol" onclick="toggleSurvey('alcohol')">🍺 Alcohol >1 (-100)</button>
+                <button class="survey-toggle" id="toggleSedentary" onclick="toggleSurvey('sedentary')">🪑 Sat 8hr+ (-100)</button>
+                <button class="survey-toggle" id="toggleUnwell" onclick="toggleSurvey('unwell')">🤒 Unwell (-100)</button>
+            </div>
+            
+            <div style="margin-top:8px;text-align:center;">
+                <a href="#" onclick="showBackfillEvening();return false;" style="font-size:11px;color:#667eea;">Answer for yesterday instead</a>
+            </div>
+            <div class="modal-btns" style="margin-top:12px;">
+                <button class="modal-btn cancel" onclick="skipEveningSurvey()">Skip</button>
+                <button class="modal-btn save" onclick="submitEveningSurvey()">Submit</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Waist Measurement Modal -->
+    <div class="modal" id="waistModal">
+        <div class="modal-box">
+            <div class="modal-title">📏 Weekly Waist Check</div>
+            <p style="font-size:12px;color:#666;margin-bottom:12px;">Measure at navel level, relaxed.</p>
+            <input type="number" class="modal-input" id="waistInput" placeholder="Waist circumference (cm)" step="0.1">
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeModal('waistModal')">Skip</button>
+                <button class="modal-btn save" onclick="saveWaist()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Config
+        const CLIENT_ID = '163799557992-hgstjj16f2d587jjicjonmlulaqsh552.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/spreadsheets';
+        const SHEET_ID = '13jRxb7mOAZUyi1mO3z005W6gtG5Kh4X5PZPM4FTwNMY';
+        const TARGETS = { 
+            cal: 1600, protein: 110, sodium: 2300, 
+            fiber: 25, satFat: 18, omegaScore: 3,
+            sugar: 25, potassium: 3500, 
+            calcium: 1000, iron: 8, vitD: 800, magnesium: 420 
+        };
+        
+        let tokenClient, accessToken = localStorage.getItem('hed_token');
+        let tokenExpiry = parseInt(localStorage.getItem('hed_token_expiry')) || 0;
+        let authInProgress = false; // Prevent multiple simultaneous auth attempts
+        let syncInProgress = false; // Prevent duplicate sync operations
+        let state = { 
+            date: '', calIn: 0, calOut: 0, protein: 0, sodium: 0, 
+            fiber: 0, fatTotal: 0, fatSaturated: 0, omegaScore: 0,
+            sugar: 0, potassium: 0, calcium: 0, iron: 0, vitD: 0, magnesium: 0,
+            steps: 0, workout: false, entries: [],
+            vegetableCount: 0, processedCount: 0, sugaryCount: 0,
+            exerciseStreak: 0, lastExerciseType: '',
+            // Survey data
+            survey: {
+                morning: { sleepHours: null, answeredAt: null, retrospective: false },
+                evening: { 
+                    meditation: false, social: false, outdoors: false,
+                    smoked: false, alcohol: false, sedentary: false, unwell: false,
+                    answeredAt: null, retrospective: false 
+                }
+            },
+            // Body metrics
+            waistCm: null,
+            // Scores
+            scores: { dietQuality: 0, exercise: 0, survey: 0, bodyMetrics: 0, owi: 0, owiRating: '--' }
+        };
+        let photoData = null;
+        let showAllFoods = false;
+        let foodSortAZ = false;
+        let showAllExercises = false;
+        let exSortAZ = false;
+        let surveyBackfillMode = false;
+        
+        // Check if token needs refresh (expired or missing)
+        function tokenNeedsRefresh() {
+            if (!accessToken) return true;
+            // Only refresh if actually expired (not just close to expiry)
+            return Date.now() > tokenExpiry;
+        }
+        
+        // Check if token is likely still valid (within 1 hour of last use)
+        function tokenLikelyValid() {
+            if (!accessToken) return false;
+            // Token is valid for 1 hour, but we stored the expiry
+            // If expiry is in the future, token is valid
+            return Date.now() < tokenExpiry;
+        }
+        
+        // Silently refresh token - returns true if successful
+        async function refreshTokenSilently() {
+            if (authInProgress) {
+                console.log('Auth already in progress, waiting...');
+                return new Promise((resolve) => {
+                    setTimeout(() => resolve(!!accessToken), 3000);
+                });
+            }
+            return new Promise((resolve) => {
+                if (!tokenClient) { resolve(false); return; }
+                try {
+                    authInProgress = true;
+                    tokenClient.requestAccessToken({ prompt: '' });
+                    // The callback in initGoogle will handle the response and reset authInProgress
+                    setTimeout(() => resolve(!!accessToken), 3000);
+                } catch (e) {
+                    console.log('Silent refresh failed:', e);
+                    authInProgress = false;
+                    resolve(false);
+                }
+            });
+        }
+        
+        // Ensure valid token before API calls - only prompt if actually needed
+        async function ensureValidToken() {
+            // If token looks valid, just use it
+            if (tokenLikelyValid()) {
+                return true;
+            }
+            // Token expired - try silent refresh first
+            if (accessToken && tokenClient) {
+                console.log('Token expired, attempting silent refresh...');
+                const refreshed = await refreshTokenSilently();
+                if (refreshed) return true;
+            }
+            // No valid token - user needs to sign in manually
+            console.log('No valid token, manual sign-in required');
+            return false;
+        }
+        
+        // Weekly plan data with exercise details and hints
+        const EXERCISE_HINTS = {
+            // Pilates Home (from teacher)
+            'Ball Balancing Tabletop & Return 2x10': 'Stay stationary, balance on ball in tabletop position',
+            'Ball Hand-Up Tabletop, Curved Back Leg Extensions 2x8 each': 'Hand up while extending opposite leg with curved back',
+            'Tabletop with Bicycle Motion 2x10 each': 'Tabletop position, bicycle legs alternating',
+            'Curved Back Single Leg Tabletop Raises 2x10 each': 'Curved back, raise one leg at a time in tabletop',
+            'Ball Under Ankles - Foot Circles 2x8 each dir': 'Ball under ankles, circle feet both directions',
+            'Chest Stretch Left & Right 2x30sec each': 'Stretch chest, hold each side 30 seconds',
+            'Prone Upper Torso Raises with Ball 2x12': 'Lying face down, raise upper torso with ball',
+            // Ab Circuit
+            'Mountain Climbers 3x30': 'Plank position, drive knees to chest alternating fast',
+            'Bicycle Crunches 3x20': 'On back, alternate elbow to opposite knee',
+            'Flutter Kicks 3x30': 'On back, legs straight, small fast up/down kicks',
+            'Russian Twists 3x20': 'Seated, lean back, rotate torso side to side',
+            'Leg Raises 3x15': 'On back, legs straight, lift to ceiling, lower slow',
+            'Hollow Body Hold 3x30sec': 'On back, arms/legs lifted, hold banana shape',
+            'Plank 3x45sec': 'Forearms and toes, body straight, hold tight',
+            // Bike
+            'Warm up 5 min': 'Light pace to get blood flowing',
+            'Moderate pace 30-35 min': 'Steady effort, can still talk',
+            'Cool down 5 min': 'Slow pace, let heart rate drop',
+            // Resistance - Bending Bar
+            'Front Chest Press 3x15 (hold 2 sec)': 'Hold bar in front, squeeze inward, hold 2 sec',
+            'Overhead Press & Bend 3x12': 'Bar overhead, bend/squeeze down',
+            'Behind-the-Back Squeeze 3x15': 'Bar behind lower back, squeeze handles together',
+            'Abdominal Crunch with Bar 3x15': 'Squeeze bar while crunching abs',
+            'Rotational Twists 3x10 each side': 'Hold squeezed bar, rotate torso left/right',
+            // Resistance - Bands
+            'Push-Ups 3x5-15': 'Hands on floor, lower chest, push up (start with wall/knees)',
+            'Band Pull-Aparts 3x20': 'Hold band in front, pull hands apart stretching band',
+            'Rapid Punches with Band 3x50': 'Band behind back, punch forward fast alternating',
+            'Cross Curls 3x12 each side': 'Band under feet, curl across body to opposite shoulder',
+            'Band Chest Fly 3x15': 'Band behind back, arms wide, squeeze together in front',
+            // Sunday
+            '45-60 min walk': '45-60 min comfortable pace',
+            'Stretching': 'Gentle stretches for major muscle groups',
+            'Foam rolling (optional)': 'Roll out tight spots, especially legs and back'
+        };
+        
+        const WEEKLY_PLAN = [
+            { day: 'Monday', workout: 'Ab Circuit', cal: 200, time: '10-11am', 
+              details: '~20-25 min circuit-style. 30-60 sec rest after each round. 3 rounds.',
+              exercises: ['Mountain Climbers 3x30', 'Bicycle Crunches 3x20', 'Flutter Kicks 3x30', 'Russian Twists 3x20', 'Leg Raises 3x15', 'Hollow Body Hold 3x30sec', 'Plank 3x45sec'] },
+            { day: 'Tuesday', workout: 'Bike', cal: 400, time: '10-11am', 
+              details: '35-40 min moderate pace.',
+              exercises: ['Warm up 5 min', 'Moderate pace 30-35 min', 'Cool down 5 min'] },
+            { day: 'Wednesday', workout: 'Resistance', cal: 180, time: '10-11am', 
+              details: '~35-40 min. Chest, shoulders, and core.',
+              exercises: ['— Muscle Bending Bar —', 'Front Chest Press 3x15 (hold 2 sec)', 'Overhead Press & Bend 3x12', 'Behind-the-Back Squeeze 3x15', 'Abdominal Crunch with Bar 3x15', 'Rotational Twists 3x10 each side', '— Bands & Bodyweight —', 'Push-Ups 3x5-15', 'Band Pull-Aparts 3x20', 'Rapid Punches with Band 3x50', 'Cross Curls 3x12 each side', 'Band Chest Fly 3x15'] },
+            { day: 'Thursday', workout: 'Ab Circuit', cal: 200, time: '10-11am', 
+              details: '~20-25 min circuit-style. 30-60 sec rest after each round. 3 rounds.',
+              exercises: ['Mountain Climbers 3x30', 'Bicycle Crunches 3x20', 'Flutter Kicks 3x30', 'Russian Twists 3x20', 'Leg Raises 3x15', 'Hollow Body Hold 3x30sec', 'Plank 3x45sec'] },
+            { day: 'Friday', workout: 'Bike', cal: 400, time: '10-11am', 
+              details: '35-40 min moderate pace.',
+              exercises: ['Warm up 5 min', 'Moderate pace 30-35 min', 'Cool down 5 min'] },
+            { day: 'Saturday', workout: 'Resistance', cal: 180, time: '10-11am', 
+              details: '~35-40 min. Chest, shoulders, and core.',
+              exercises: ['— Muscle Bending Bar —', 'Front Chest Press 3x15 (hold 2 sec)', 'Overhead Press & Bend 3x12', 'Behind-the-Back Squeeze 3x15', 'Abdominal Crunch with Bar 3x15', 'Rotational Twists 3x10 each side', '— Bands & Bodyweight —', 'Push-Ups 3x5-15', 'Band Pull-Aparts 3x20', 'Rapid Punches with Band 3x50', 'Cross Curls 3x12 each side', 'Band Chest Fly 3x15'] },
+            { day: 'Sunday', workout: 'Rest Day', cal: 0, time: '', 
+              details: 'Active recovery.',
+              exercises: ['45-60 min walk', 'Stretching', 'Foam rolling (optional)'] },
+        ];
+        
+        // Food database - loaded from FoodDB sheet, with fallback
+        let ALL_FOODS = [
+            { name: 'Baseline', cal: 78, protein: 1, sodium: 0, fiber: 0, sugar: 0, potassium: 0, calcium: 200, iron: 0, vitD: 400, magnesium: 100, icon: '📋' },
+        ];
+        
+        // Load foods from FoodDB sheet
+        async function loadFoodDB() {
+            if (!accessToken) return;
+            try {
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/FoodDB!A2:Q200`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.values || data.values.length === 0) return;
+                
+                // New FoodDB columns: Name(0), Cal(1), Protein(2), Sodium(3), FatTotal(4), FatSaturated(5), 
+                // OmegaScore(6), Flags(7), Fiber(8), Sugar(9), Potassium(10), Calcium(11), Iron(12), VitD(13), Magnesium(14), Icon(15), Short(16)
+                ALL_FOODS = data.values.map(row => {
+                    const flags = (row[7] || '').toUpperCase();
+                    return {
+                        name: row[0] || '',
+                        cal: parseInt(row[1]) || 0,
+                        protein: parseInt(row[2]) || 0,
+                        sodium: parseInt(row[3]) || 0,
+                        fatTotal: parseInt(row[4]) || 0,
+                        fatSaturated: parseInt(row[5]) || 0,
+                        omegaScore: parseInt(row[6]) || 0,
+                        isVegetable: flags.includes('V'),
+                        isProcessed: flags.includes('P'),
+                        isSugary: flags.includes('S'),
+                        fiber: parseInt(row[8]) || 0,
+                        sugar: parseInt(row[9]) || 0,
+                        potassium: parseInt(row[10]) || 0,
+                        calcium: parseInt(row[11]) || 0,
+                        iron: parseInt(row[12]) || 0,
+                        vitD: parseInt(row[13]) || 0,
+                        magnesium: parseInt(row[14]) || 0,
+                        icon: row[15] || '🍽️',
+                        short: row[16] || ''
+                    };
+                }).filter(f => f.name); // Filter out empty rows
+                
+                console.log('Loaded ' + ALL_FOODS.length + ' foods from FoodDB');
+                renderButtons(); // Re-render with new foods
+            } catch (e) {
+                console.error('Load FoodDB error:', e);
+            }
+        }
+        
+        let ALL_EXERCISES = [
+            { name: 'Ab Circuit', cal: 200, icon: '💪' },
+            { name: 'Bike', cal: 400, icon: '🚴' },
+            { name: 'Resistance', cal: 180, icon: '🏋️' },
+        ]; // Fallback, will be replaced by loadExerciseDB
+        
+        // Load exercises from ExerciseDB sheet
+        async function loadExerciseDB() {
+            if (!accessToken) return;
+            try {
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/ExerciseDB!A2:D100`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (res.status === 401) {
+                    await handleAuthError();
+                    return;
+                }
+                if (res.status !== 200) return;
+                
+                const data = await res.json();
+                if (!data.values || !data.values.length) return;
+                
+                // Columns: Name(0), Cal(1), Icon(2), Short(3)
+                ALL_EXERCISES = data.values.map(row => ({
+                    name: row[0],
+                    cal: parseInt(row[1]) || 0,
+                    icon: row[2] || '💪',
+                    short: row[3] || ''
+                })).filter(e => e.name); // Filter out empty rows
+                
+                console.log('Loaded ' + ALL_EXERCISES.length + ' exercises from ExerciseDB');
+                renderButtons();
+            } catch (e) {
+                console.error('Load ExerciseDB error:', e);
+            }
+        }
+        
+        // Save exercise to ExerciseDB sheet
+        async function saveToExerciseDB(name, cal) {
+            await ensureValidToken();
+            if (!accessToken) return;
+            const exists = ALL_EXERCISES.some(e => e.name.toLowerCase() === name.toLowerCase());
+            if (exists) return;
+            
+            try {
+                const icon = '💪';
+                const short = name.length > 12 ? name.substring(0, 10) + '..' : '';
+                const row = [[name, cal, icon, short]];
+                
+                const res = await authFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/ExerciseDB!A:D:append?valueInputOption=USER_ENTERED`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: row })
+                });
+                
+                if (res && res.ok) {
+                    ALL_EXERCISES.push({ name, cal, icon, short });
+                    renderButtons();
+                    console.log('Saved to ExerciseDB:', name);
+                }
+            } catch (e) {
+                console.error('Save to ExerciseDB error:', e);
+            }
+        }
+        
+        // Usage tracking
+        let itemUsage = JSON.parse(localStorage.getItem('hed_usage') || '{}');
+        let itemLastUsed = JSON.parse(localStorage.getItem('hed_last_used') || '{}');
+        
+        function trackUsage(name) {
+            itemUsage[name] = (itemUsage[name] || 0) + 1;
+            itemLastUsed[name] = Date.now();
+            localStorage.setItem('hed_usage', JSON.stringify(itemUsage));
+            localStorage.setItem('hed_last_used', JSON.stringify(itemLastUsed));
+        }
+        
+        function seedUsageFromState() {
+            // Count from today's entries
+            state.entries.forEach(e => {
+                itemUsage[e.name] = (itemUsage[e.name] || 0) + 1;
+                itemLastUsed[e.name] = e.time || Date.now();
+            });
+            localStorage.setItem('hed_usage', JSON.stringify(itemUsage));
+            localStorage.setItem('hed_last_used', JSON.stringify(itemLastUsed));
+        }
+        
+        async function seedUsageFromSheets() {
+            if (!accessToken) return;
+            try {
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!H2:H100`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (res.status !== 200) return;
+                
+                const data = await res.json();
+                if (!data.values) return;
+                
+                // Count item occurrences from Items column
+                data.values.forEach(row => {
+                    if (row[0]) {
+                        row[0].split(', ').forEach(item => {
+                            const name = item.trim();
+                            if (name) {
+                                itemUsage[name] = (itemUsage[name] || 0) + 1;
+                            }
+                        });
+                    }
+                });
+                localStorage.setItem('hed_usage', JSON.stringify(itemUsage));
+                renderButtons();
+                console.log('Seeded usage from sheets:', itemUsage);
+            } catch (e) {
+                console.error('Seed usage error:', e);
+            }
+        }
+        
+        function renderButtons() {
+            const foodQuickEl = document.getElementById('foodButtonsQuick');
+            const foodFullEl = document.getElementById('foodButtonsFull');
+            const exQuickEl = document.getElementById('exerciseButtonsQuick');
+            const exFullEl = document.getElementById('exerciseButtonsFull');
+            if (!foodQuickEl || !foodFullEl) {
+                console.error('Button containers not found');
+                return;
+            }
+            
+            // Sort foods based on current sort setting
+            let sortedFoods;
+            if (foodSortAZ) {
+                sortedFoods = [...ALL_FOODS].sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                sortedFoods = [...ALL_FOODS].sort((a, b) => (itemLastUsed[b.name] || 0) - (itemLastUsed[a.name] || 0));
+            }
+            
+            // Quick view - top 8
+            const quickFoods = sortedFoods.slice(0, 8);
+            const quickHtml = quickFoods.map(f => 
+                `<button class="qbtn food" onclick="addFoodByName('${f.name}')">${f.icon} ${f.short || f.name} <span class="qbtn-cal">${f.cal}/${f.protein}g/${f.sodium || 0}mg</span></button>`
+            ).join('') + `<button class="qbtn food" onclick="openCustom()">➕ Custom</button>`;
+            foodQuickEl.innerHTML = quickHtml;
+            
+            // Full view - all foods with full names
+            const fullHtml = sortedFoods.map(f => 
+                `<button class="qbtn food" onclick="addFoodByName('${f.name}')">${f.icon} ${f.name} <span class="qbtn-cal">${f.cal}/${f.protein}g/${f.sodium || 0}mg</span></button>`
+            ).join('') + `<button class="qbtn food" onclick="openCustom()">➕ Custom</button>`;
+            foodFullEl.innerHTML = fullHtml;
+            
+            // Sort exercises based on current sort setting
+            let sortedEx;
+            if (exSortAZ) {
+                sortedEx = [...ALL_EXERCISES].sort((a, b) => a.name.localeCompare(b.name));
+            } else {
+                sortedEx = [...ALL_EXERCISES].sort((a, b) => (itemLastUsed[b.name] || 0) - (itemLastUsed[a.name] || 0));
+            }
+            
+            // Exercise quick view - top 6
+            if (exQuickEl) {
+                const quickEx = sortedEx.slice(0, 6);
+                const exQuickHtml = quickEx.map(e => 
+                    `<button class="qbtn exercise" onclick="addExercise('${e.name}',${e.cal})">${e.icon} ${e.name} <span class="qbtn-cal">${e.cal}</span></button>`
+                ).join('');
+                exQuickEl.innerHTML = exQuickHtml;
+            }
+            
+            // Exercise full view - all
+            if (exFullEl) {
+                const exFullHtml = sortedEx.map(e => 
+                    `<button class="qbtn exercise" onclick="addExercise('${e.name}',${e.cal})">${e.icon} ${e.name} <span class="qbtn-cal">${e.cal}</span></button>`
+                ).join('');
+                exFullEl.innerHTML = exFullHtml;
+            }
+        }
+        
+        // Helper to add food by name (looks up all nutrients)
+        function addFoodByName(name) {
+            const food = ALL_FOODS.find(f => f.name === name);
+            if (food) {
+                addFood(food.name, food.cal, food.protein, {
+                    sodium: food.sodium || 0, fiber: food.fiber || 0, sugar: food.sugar || 0,
+                    potassium: food.potassium || 0, calcium: food.calcium || 0, iron: food.iron || 0,
+                    vitD: food.vitD || 0, magnesium: food.magnesium || 0
+                });
+            }
+        }
+        
+        // Food toggle functions
+        function toggleFoodSize() {
+            showAllFoods = !showAllFoods;
+            const quickEl = document.getElementById('foodButtonsQuick');
+            const fullEl = document.getElementById('foodButtonsFull');
+            const toggleEl = document.getElementById('foodSizeToggle');
+            if (showAllFoods) {
+                quickEl.style.display = 'none';
+                fullEl.style.display = 'flex';
+                toggleEl.textContent = 'Less ▲';
+            } else {
+                quickEl.style.display = 'flex';
+                fullEl.style.display = 'none';
+                toggleEl.textContent = 'All ▼';
+            }
+        }
+        
+        function toggleFoodSort() {
+            foodSortAZ = !foodSortAZ;
+            document.getElementById('foodSortToggle').textContent = foodSortAZ ? 'A-Z' : 'Recent';
+            renderButtons();
+        }
+        
+        // Exercise toggle functions
+        function toggleExSize() {
+            showAllExercises = !showAllExercises;
+            const quickEl = document.getElementById('exerciseButtonsQuick');
+            const fullEl = document.getElementById('exerciseButtonsFull');
+            const toggleEl = document.getElementById('exSizeToggle');
+            if (showAllExercises) {
+                quickEl.style.display = 'none';
+                fullEl.style.display = 'flex';
+                toggleEl.textContent = 'Less ▲';
+            } else {
+                quickEl.style.display = 'flex';
+                fullEl.style.display = 'none';
+                toggleEl.textContent = 'All ▼';
+            }
+        }
+        
+        function toggleExSort() {
+            exSortAZ = !exSortAZ;
+            document.getElementById('exSortToggle').textContent = exSortAZ ? 'A-Z' : 'Recent';
+            renderButtons();
+        }
+        
+        function updateSyncStatus() {
+            const el = document.getElementById('syncStatus');
+            // Green only if token exists AND not expired
+            if (accessToken && tokenLikelyValid()) {
+                el.textContent = 'MB';
+                el.style.background = '#4CAF50';
+                el.style.fontSize = '10px';
+                el.style.fontWeight = 'bold';
+                el.title = 'Connected - tap to refresh';
+            } else if (accessToken) {
+                // Have token but expired
+                el.textContent = 'MB';
+                el.style.background = '#ff9800'; // Orange = expired
+                el.style.fontSize = '10px';
+                el.style.fontWeight = 'bold';
+                el.title = 'Session expired - tap to reconnect';
+            } else {
+                el.textContent = '';
+                el.style.background = 'rgba(255,255,255,0.4)';
+                el.title = 'Tap to sign in';
+            }
+        }
+        
+        // Handle 401 errors - try silent refresh first
+        async function handleAuthError() {
+            console.log('Auth error - attempting silent refresh...');
+            const refreshed = await refreshTokenSilently();
+            if (refreshed && accessToken) {
+                console.log('Silent refresh successful');
+                updateSyncStatus();
+                return true; // Caller can retry
+            } else {
+                console.log('Silent refresh failed - need manual login');
+                localStorage.removeItem('hed_token');
+                localStorage.removeItem('hed_token_expiry');
+                accessToken = null;
+                tokenExpiry = 0;
+                updateSyncStatus();
+                toast('Tap MB to reconnect');
+                return false;
+            }
+        }
+        
+        // Wrapper for authenticated fetch that handles 401 with auto-retry
+        async function authFetch(url, options = {}) {
+            if (!accessToken) return null;
+            options.headers = { ...options.headers, Authorization: `Bearer ${accessToken}` };
+            let res = await fetch(url, options);
+            if (res.status === 401) {
+                // Try to refresh and retry once
+                const refreshed = await handleAuthError();
+                if (refreshed) {
+                    options.headers.Authorization = `Bearer ${accessToken}`;
+                    res = await fetch(url, options);
+                    if (res.status === 401) return null; // Still failing
+                } else {
+                    return null;
+                }
+            }
+            return res;
+        }
+        
+        // Init
+        async function init() {
+            state.date = new Date().toDateString();
+            loadState();
+            seedUsageFromState();
+            updateUI();
+            initGoogle();
+            scheduleMidnightSave();
+        }
+        
+        function initGoogle() {
+            if (typeof google === 'undefined') {
+                setTimeout(initGoogle, 200);
+                return;
+            }
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: async (r) => {
+                    authInProgress = false; // Reset auth lock
+                    if (r.access_token) {
+                        accessToken = r.access_token;
+                        // Token expires in ~1 hour (3600 seconds)
+                        tokenExpiry = Date.now() + (r.expires_in || 3600) * 1000;
+                        localStorage.setItem('hed_token', accessToken);
+                        localStorage.setItem('hed_token_expiry', tokenExpiry.toString());
+                        updateSyncStatus();
+                        // Load from Sheets after sign-in
+                        const loaded = await loadFromLiveData();
+                        if (loaded) {
+                            toast('Synced from cloud!');
+                        }
+                        updateUI(); // Always update UI after sign-in
+                        // Load food and exercise databases from sheet
+                        await loadFoodDB();
+                        await loadExerciseDB();
+                        renderButtons();
+                        // Auto-sync any unsynced history to DailyLog
+                        await syncHistoryToSheets(true);
+                        seedUsageFromSheets();
+                        syncSteps();
+                    }
+                }
+            });
+            
+            // Check if we have a potentially valid token
+            console.log('initGoogle: tokenLikelyValid=', tokenLikelyValid(), 'accessToken=', !!accessToken);
+            if (tokenLikelyValid()) {
+                // Token looks valid, try to use it
+                updateSyncStatus();
+                loadFromLiveData().then(loaded => {
+                    if (loaded) {
+                        toast('Synced from cloud');
+                    }
+                    updateUI(); // Always update UI after attempting load
+                    syncHistoryToSheets(true); // Run AFTER loadFromLiveData completes to avoid race condition
+                });
+                loadFoodDB().then(() => { console.log('FoodDB loaded'); renderButtons(); });
+                loadExerciseDB().then(() => { console.log('ExerciseDB loaded'); renderButtons(); });
+                seedUsageFromSheets();
+            } else if (accessToken) {
+                // Have a token but it's expired - try silent refresh first
+                updateSyncStatus();
+                console.log('Token expired - attempting silent refresh...');
+                refreshTokenSilently().then(refreshed => {
+                    if (refreshed) {
+                        console.log('Silent refresh succeeded');
+                        updateSyncStatus();
+                        loadFromLiveData().then(loaded => {
+                            if (loaded) toast('Synced from cloud');
+                            updateUI();
+                            syncHistoryToSheets(true); // Run AFTER loadFromLiveData completes to avoid race condition
+                        });
+                        loadFoodDB().then(() => { console.log('FoodDB loaded'); renderButtons(); });
+                        loadExerciseDB().then(() => { console.log('ExerciseDB loaded'); renderButtons(); });
+                        seedUsageFromSheets();
+                    } else {
+                        console.log('Silent refresh failed - prompting login');
+                        googleSignIn(); // Auto-prompt if silent refresh fails
+                    }
+                });
+            } else {
+                // No token at all - auto-prompt login
+                updateSyncStatus();
+                console.log('No token - prompting login');
+                setTimeout(() => googleSignIn(), 500); // Slight delay for smoother UX
+            }
+            
+            // Retry loading DBs after 2 seconds if not loaded
+            setTimeout(() => {
+                if (ALL_FOODS.length <= 1 && accessToken) {
+                    console.log('Retry loading FoodDB...');
+                    loadFoodDB().then(() => renderButtons());
+                }
+                if (ALL_EXERCISES.length <= 3 && accessToken) {
+                    console.log('Retry loading ExerciseDB...');
+                    loadExerciseDB().then(() => renderButtons());
+                }
+                updateSyncStatus();
+            }, 2000);
+        }
+        
+        function googleSignIn() { 
+            if (authInProgress) {
+                console.log('Auth already in progress, skipping');
+                return;
+            }
+            authInProgress = true;
+            console.log('Starting auth...');
+            tokenClient.requestAccessToken(); 
+        }
+        
+        // State
+        function loadState() {
+            const today = new Date().toDateString();
+            const saved = localStorage.getItem('hed_state');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.date === today) {
+                    // Merge parsed state with defaults to ensure all fields exist
+                    state = { 
+                        ...state,  // Keep defaults (including scores)
+                        ...parsed, // Override with saved values
+                        scores: { ...state.scores, ...(parsed.scores || {}) }, // Ensure scores exists
+                        survey: { 
+                            morning: { ...state.survey.morning, ...(parsed.survey?.morning || {}) },
+                            evening: { ...state.survey.evening, ...(parsed.survey?.evening || {}) }
+                        }
+                    };
+                } else {
+                    saveToHistory(parsed);
+                    saveToSheets(parsed);
+                    state.date = today;
+                }
+            } else {
+                state.date = today;
+            }
+        }
+        
+        function saveState() {
+            state.date = new Date().toDateString();
+            state.lastModified = Date.now(); // Track when state was last modified
+            localStorage.setItem('hed_state', JSON.stringify(state));
+            syncToLiveData(); // Sync to Sheets on every save
+        }
+        
+        // Sync current state to LiveData sheet
+        async function syncToLiveData() {
+            await ensureValidToken();
+            if (!accessToken) return;
+            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+            // Store entries with lastModified for proper sync
+            const entriesData = JSON.stringify({
+                entries: state.entries,
+                lastModified: state.lastModified || Date.now()
+            });
+            // Get weight from localStorage
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            const todayWeight = weightHistory.find(w => w.date === today);
+            const weight = todayWeight ? todayWeight.weight : '';
+            // Auto-set workout if calOut >= 400
+            const workoutDone = state.calOut >= 400 ? 'Yes' : 'No';
+            
+            // Ensure survey object exists
+            const survey = state.survey || { morning: {}, evening: {} };
+            const morning = survey.morning || {};
+            const evening = survey.evening || {};
+            
+            // Calculate scores
+            calculateScores();
+            
+            // Row: A-AE (31 columns)
+            // A:Date, B:CalIn, C:Protein, D:Sodium, E:CalOut, F:Steps, G:Weight, H:Net, I:Workout,
+            // J:FatTotal, K:FatSat, L:Fiber, M:Omega, N:VegCount, O:ProcCount, P:SugarCount,
+            // Q:Sleep, R:Meditation, S:Social, T:Outdoors, U:Smoked, V:Alcohol, W:Sedentary, X:Unwell,
+            // Y:Waist, Z:DietScore, AA:ExScore, AB:SurveyScore, AC:BodyScore, AD:OWI, AE:Entries
+            const row = [
+                today,                                          // A: Date
+                state.calIn,                                    // B: Cal In
+                state.protein,                                  // C: Protein
+                state.sodium || 0,                              // D: Sodium
+                state.calOut,                                   // E: Cal Out
+                state.steps,                                    // F: Steps
+                weight,                                         // G: Weight
+                state.calIn - state.calOut,                     // H: Net
+                workoutDone,                                    // I: Workout
+                state.fatTotal || 0,                            // J: FatTotal
+                state.fatSaturated || 0,                        // K: FatSaturated
+                state.fiber || 0,                               // L: Fiber
+                state.omegaScore || 0,                          // M: OmegaScore
+                state.vegetableCount || 0,                      // N: VegetableCount
+                state.processedCount || 0,                      // O: ProcessedCount
+                state.sugaryCount || 0,                         // P: SugaryCount
+                morning.sleepHours || '',                       // Q: SleepHours
+                evening.meditation ? 'Y' : '',                  // R: Meditation
+                evening.social ? 'Y' : '',                      // S: Social
+                evening.outdoors ? 'Y' : '',                    // T: Outdoors
+                evening.smoked ? 'Y' : '',                      // U: Smoked
+                evening.alcohol ? 'Y' : '',                     // V: Alcohol
+                evening.sedentary ? 'Y' : '',                   // W: Sedentary
+                evening.unwell ? 'Y' : '',                      // X: Unwell
+                state.waistCm || '',                            // Y: WaistCm
+                Math.round(state.scores.dietQuality) || 0,      // Z: DietScore
+                Math.round(state.scores.exercise) || 0,         // AA: ExerciseScore
+                Math.round(state.scores.survey) || 0,           // AB: SurveyScore
+                Math.round(state.scores.bodyMetrics) || 0,      // AC: BodyScore
+                Math.round(state.scores.owi) || 0,              // AD: OWIScore
+                entriesData                                     // AE: Entries
+            ];
+            try {
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/LiveData-OPU!A2:AE2?valueInputOption=RAW`, {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [row] })
+                });
+                console.log('Synced to LiveData');
+            } catch (e) { 
+                console.error('LiveData sync error:', e); 
+            }
+        }
+        
+        // Load state from LiveData sheet
+        async function loadFromLiveData() {
+            await ensureValidToken();
+            if (!accessToken) return false;
+            try {
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/LiveData-OPU!A2:AE2`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                
+                if (res.status === 401) {
+                    handleAuthError();
+                    return false;
+                }
+                
+                const data = await res.json();
+                const today = new Date().toLocaleDateString('en-CA');
+                
+                if (data.values && data.values[0] && data.values[0][0] === today) {
+                    // Sheet has today's data - compare with local
+                    // Entries is now at index 30 (column AE)
+                    const row = data.values[0];
+                    const sheetCalIn = parseInt(row[1]) || 0;
+                    let sheetEntries = [];
+                    let sheetLastModified = 0;
+                    try { 
+                        const parsed = JSON.parse(row[30] || '[]');
+                        // Check if it's the new format with lastModified
+                        if (parsed.lastModified) {
+                            sheetEntries = parsed.entries || [];
+                            sheetLastModified = parsed.lastModified || 0;
+                        } else {
+                            // Old format - just entries array
+                            sheetEntries = parsed;
+                        }
+                    } catch { 
+                        sheetEntries = []; 
+                    }
+                    
+                    // Get most recent timestamp from each (including lastModified for deletions)
+                    const getLatestTime = (entries, lastMod = 0) => {
+                        let latest = lastMod;
+                        if (entries && entries.length) {
+                            const entryMax = Math.max(...entries.map(e => e.time || 0));
+                            latest = Math.max(latest, entryMax);
+                        }
+                        return latest;
+                    };
+                    
+                    const localLatest = getLatestTime(state.entries, state.lastModified || 0);
+                    const sheetLatest = getLatestTime(sheetEntries, sheetLastModified);
+                    const sheetWorkout = row[8] === 'Yes';
+                    
+                    console.log('Merge check - Local latest:', localLatest, 'Sheet latest:', sheetLatest);
+                    
+                    // Preserve workout flag if either has it true
+                    if (sheetWorkout && !state.workout) {
+                        state.workout = true;
+                        console.log('Preserving workout flag from sheet');
+                    }
+                    
+                    // Use the one with the most recent modification
+                    if (localLatest > sheetLatest) {
+                        console.log('Local has newer data, syncing to sheet');
+                        await syncToLiveData();
+                        return false;
+                    }
+                    
+                    // Sheet has newer data, load it
+                    if (sheetLatest > 0) {
+                        // Preserve local workout flag if true
+                        const preserveWorkout = state.workout || sheetWorkout;
+                        
+                        // Load all columns
+                        state.date = new Date().toDateString();
+                        state.calIn = sheetCalIn;
+                        state.protein = parseInt(row[2]) || 0;
+                        state.sodium = parseInt(row[3]) || 0;
+                        state.calOut = parseInt(row[4]) || 0;
+                        state.steps = parseInt(row[5]) || 0;
+                        state.workout = preserveWorkout;
+                        state.fatTotal = parseInt(row[9]) || 0;
+                        state.fatSaturated = parseInt(row[10]) || 0;
+                        state.fiber = parseInt(row[11]) || 0;
+                        state.omegaScore = parseInt(row[12]) || 0;
+                        state.vegetableCount = parseInt(row[13]) || 0;
+                        state.processedCount = parseInt(row[14]) || 0;
+                        state.sugaryCount = parseInt(row[15]) || 0;
+                        
+                        // Survey data
+                        if (!state.survey) state.survey = { morning: {}, evening: {} };
+                        if (row[16]) state.survey.morning = { sleepHours: row[16], answeredAt: new Date().toISOString() };
+                        state.survey.evening = {
+                            meditation: row[17] === 'Y',
+                            social: row[18] === 'Y',
+                            outdoors: row[19] === 'Y',
+                            smoked: row[20] === 'Y',
+                            alcohol: row[21] === 'Y',
+                            sedentary: row[22] === 'Y',
+                            unwell: row[23] === 'Y',
+                            answeredAt: (row[17] || row[18] || row[19] || row[20] || row[21] || row[22] || row[23]) ? new Date().toISOString() : null
+                        };
+                        
+                        state.waistCm = parseFloat(row[24]) || null;
+                        state.entries = sheetEntries;
+                        state.lastModified = sheetLastModified;
+                        
+                        // Recalculate other nutrients from entries
+                        state.sugar = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.sugar||0),0);
+                        state.potassium = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.potassium||0),0);
+                        state.calcium = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.calcium||0),0);
+                        state.iron = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.iron||0),0);
+                        state.vitD = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.vitD||0),0);
+                        state.magnesium = sheetEntries.filter(e=>e.type==='food').reduce((sum,e)=>sum+(e.magnesium||0),0);
+                        
+                        localStorage.setItem('hed_state', JSON.stringify(state));
+                        console.log('Loaded from LiveData:', state);
+                        return true;
+                    }
+                    return false;
+                } else if (data.values && data.values[0] && data.values[0][0]) {
+                    // Different day - archive old data, but keep local state
+                    console.log('New day detected, archiving old LiveData');
+                    await archiveToDaily(data.values[0]);
+                    // Clear LiveData row (will be filled by syncToLiveData when user adds items)
+                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/LiveData-OPU!A2:AE2:clear`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${accessToken}` }
+                    });
+                    // Sync current local state to LiveData
+                    if (state.entries.length > 0) {
+                        await syncToLiveData();
+                    }
+                } else {
+                    // No data in sheet for today - sync local to sheet
+                    if (state.entries.length > 0) {
+                        console.log('Sheet empty, syncing local to sheet');
+                        await syncToLiveData();
+                    }
+                }
+                // No data for today in sheet - keep local state, don't overwrite
+                return false;
+            } catch (e) { 
+                console.error('LoadFromLiveData error:', e);
+                return false; 
+            }
+        }
+        
+        // Archive a day's data to DailyLog
+        // Archive a day's data to DailyLog - WITH LOCK to prevent duplicates
+        async function archiveToDaily(row) {
+            if (!accessToken) return;
+            
+            // Use same lock as syncHistoryToSheets to prevent concurrent writes
+            if (syncInProgress) {
+                console.log('Sync in progress, skipping archive');
+                return;
+            }
+            syncInProgress = true;
+            
+            try {
+                // Normalize date function
+                const normalizeDate = (d) => {
+                    if (!d) return '';
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                    try {
+                        const parsed = new Date(d);
+                        if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+                    } catch {}
+                    return d;
+                };
+                
+                // Check if date already exists in DailyLog
+                const checkRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:A`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const checkData = await checkRes.json();
+                const existingDates = new Set((checkData.values || []).flat().map(normalizeDate));
+                const rowDate = normalizeDate(row[0]);
+                
+                if (existingDates.has(rowDate)) {
+                    console.log('Date already archived:', rowDate);
+                    return;
+                }
+                
+                // Double-check before write (re-fetch to be absolutely sure)
+                const recheck = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:A`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const recheckData = await recheck.json();
+                const recheckDates = new Set((recheckData.values || []).flat().map(normalizeDate));
+                
+                if (recheckDates.has(rowDate)) {
+                    console.log('Date appeared during archive check:', rowDate);
+                    return;
+                }
+                
+                // Convert entries JSON to item names (Entries is at index 30)
+                let items = '';
+                try {
+                    const parsed = JSON.parse(row[30] || '[]');
+                    const entries = parsed.entries || parsed;
+                    items = entries.map(e => e.name).join(', ');
+                } catch {}
+                
+                // DailyLog row: All 31 columns (A-AE), but replace Entries JSON with item names
+                const archiveRow = [
+                    rowDate,        // A: Date
+                    row[1] || 0,    // B: Cal In
+                    row[2] || 0,    // C: Protein
+                    row[3] || 0,    // D: Sodium
+                    row[4] || 0,    // E: Cal Out
+                    row[5] || 0,    // F: Steps
+                    row[6] || '',   // G: Weight
+                    row[7] || 0,    // H: Net
+                    row[8] || '',   // I: Workout
+                    row[9] || 0,    // J: FatTotal
+                    row[10] || 0,   // K: FatSaturated
+                    row[11] || 0,   // L: Fiber
+                    row[12] || 0,   // M: OmegaScore
+                    row[13] || 0,   // N: VegetableCount
+                    row[14] || 0,   // O: ProcessedCount
+                    row[15] || 0,   // P: SugaryCount
+                    row[16] || '',  // Q: SleepHours
+                    row[17] || '',  // R: Meditation
+                    row[18] || '',  // S: Social
+                    row[19] || '',  // T: Outdoors
+                    row[20] || '',  // U: Smoked
+                    row[21] || '',  // V: Alcohol
+                    row[22] || '',  // W: Sedentary
+                    row[23] || '',  // X: Unwell
+                    row[24] || '',  // Y: WaistCm
+                    row[25] || 0,   // Z: DietScore
+                    row[26] || 0,   // AA: ExerciseScore
+                    row[27] || 0,   // AB: SurveyScore
+                    row[28] || 0,   // AC: BodyScore
+                    row[29] || 0,   // AD: OWIScore
+                    items           // AE: Items (converted from Entries JSON)
+                ];
+                
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:AE:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [archiveRow] })
+                });
+                console.log('Archived to DailyLog:', rowDate);
+            } catch (e) {
+                console.error('Archive error:', e);
+            } finally {
+                syncInProgress = false; // Always release lock
+            }
+        }
+        
+        // Manual refresh button
+        async function refreshFromSheets() {
+            toast('Refreshing...');
+            const loaded = await loadFromLiveData();
+            if (loaded) {
+                updateUI();
+                toast('Synced from cloud!');
+            } else {
+                toast('No cloud data or not signed in');
+            }
+        }
+        
+        // Sync local history to DailyLog sheet
+        // Sync local history to DailyLog sheet - WITH LOCK to prevent duplicates
+        async function syncHistoryToSheets(silent = false) {
+            // LOCK: Prevent multiple simultaneous sync operations
+            if (syncInProgress) {
+                console.log('Sync already in progress, skipping');
+                return;
+            }
+            syncInProgress = true;
+            
+            try {
+                if (!accessToken) { 
+                    if (!silent) toast('Please sign in first');
+                    return; 
+                }
+                if (!silent) toast('Syncing history...');
+                const history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+                if (!history.length) {
+                    if (!silent) toast('No history to sync');
+                    return;
+                }
+                
+                // Get existing dates in DailyLog
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:A`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                
+                // Normalize all dates to YYYY-MM-DD for comparison
+                const normalizeDate = (d) => {
+                    if (!d) return '';
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                    try {
+                        const parsed = new Date(d);
+                        if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+                    } catch {}
+                    return '';
+                };
+                
+                // Build set of existing dates (normalized)
+                const existingDates = new Set();
+                (data.values || []).forEach(row => {
+                    if (row[0]) {
+                        const norm = normalizeDate(row[0]);
+                        if (norm) existingDates.add(norm);
+                    }
+                });
+                console.log('Existing dates in DailyLog:', [...existingDates]);
+                
+                // Filter history to only new dates (normalize for comparison)
+                const newEntries = history.filter(h => {
+                    const normDate = normalizeDate(h.date);
+                    if (!normDate) return false;
+                    if (existingDates.has(normDate)) return false;
+                    if (!h.calIn && !h.protein) return false;
+                    return true;
+                });
+                
+                if (!newEntries.length) {
+                    if (!silent) toast('History already synced');
+                    return;
+                }
+                
+                // IMPORTANT: Only sync ONE entry at a time to prevent race conditions
+                const entry = newEntries[0];
+                const normDate = normalizeDate(entry.date);
+                
+                console.log('Syncing single entry:', normDate);
+                
+                // Double-check this date doesn't exist (re-fetch to be safe)
+                const recheck = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:A`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                const recheckData = await recheck.json();
+                const recheckDates = new Set((recheckData.values || []).flat().map(normalizeDate));
+                
+                if (recheckDates.has(normDate)) {
+                    console.log('Date appeared during sync, skipping:', normDate);
+                    if (!silent) toast('History already synced');
+                    return;
+                }
+                
+                const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+                const dayWeight = weightHistory.find(w => normalizeDate(w.date) === normDate);
+                
+                const row = [
+                    normDate, 
+                    entry.calIn || 0, 
+                    entry.protein || 0, 
+                    entry.sodium || 0,
+                    entry.calOut || 0, 
+                    entry.steps || 0, 
+                    dayWeight ? dayWeight.weight : '',
+                    (entry.calIn || 0) - (entry.calOut || 0), 
+                    (entry.calOut || 0) >= 400 ? 'Yes' : 'No', 
+                    entry.items || ''
+                ];
+                
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A:J:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [row] })
+                });
+                
+                if (!silent) toast('Synced 1 day to Sheets');
+                console.log('Synced to DailyLog:', normDate);
+                
+                // If there are more entries, schedule another sync after a delay
+                if (newEntries.length > 1) {
+                    setTimeout(() => syncHistoryToSheets(true), 2000);
+                }
+            } catch (e) {
+                console.error('Sync history error:', e);
+                if (!silent) toast('Sync failed');
+            } finally {
+                syncInProgress = false; // Always release lock
+            }
+        }
+        
+        function saveToHistory(data) {
+            if (!data.calIn && !data.entries.length) return;
+            let history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            
+            // Normalize date function
+            const normalizeDate = (d) => {
+                if (!d) return new Date().toLocaleDateString('en-CA');
+                if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                try {
+                    const parsed = new Date(d);
+                    if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+                } catch {}
+                return new Date().toLocaleDateString('en-CA');
+            };
+            
+            // Use the data's date, normalized to YYYY-MM-DD
+            const dateStr = normalizeDate(data.date);
+            
+            // Get weight for this date (first weight of day)
+            const dayWeight = weightHistory.find(w => w.date === dateStr);
+            
+            // Build history entry with entries array for detail view
+            const historyEntry = { 
+                date: dateStr, 
+                calIn: data.calIn, 
+                calOut: data.calOut, 
+                protein: data.protein, 
+                sodium: data.sodium || 0,
+                steps: data.steps, 
+                workout: data.workout,
+                weight: dayWeight ? dayWeight.weight : null,
+                entries: data.entries || []
+            };
+            
+            // Check if this date already exists in history
+            const existingIndex = history.findIndex(h => normalizeDate(h.date) === dateStr);
+            if (existingIndex >= 0) {
+                // Update existing entry
+                history[existingIndex] = historyEntry;
+            } else {
+                // Add new entry
+                history.unshift(historyEntry);
+            }
+            localStorage.setItem('hed_history', JSON.stringify(history.slice(0, 30)));
+        }
+        
+        async function saveToSheets(data) {
+            if (!accessToken || (!data.calIn && !data.entries.length)) return;
+            // Get weight for this date
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            const dayWeight = weightHistory.find(w => w.date === data.date);
+            // New columns: Date, Cal In, Protein, Sodium, Cal Out, Steps, Weight, Net, Workout, Items
+            const row = [
+                data.date, 
+                data.calIn, 
+                data.protein, 
+                data.sodium || 0,
+                data.calOut, 
+                data.steps, 
+                dayWeight ? dayWeight.weight : '',
+                data.calIn - data.calOut, 
+                data.calOut >= 400 ? 'Yes' : 'No', 
+                data.entries.map(e => e.name).join(', ')
+            ];
+            try {
+                const check = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A1`, { headers: { Authorization: `Bearer ${accessToken}` } });
+                const checkData = await check.json();
+                if (!checkData.values) {
+                    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A1:J1?valueInputOption=RAW`, {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ values: [['Date', 'Cal In', 'Protein', 'Sodium', 'Cal Out', 'Steps', 'Weight', 'Net', 'Workout', 'Items']] })
+                    });
+                }
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/A:J:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [row] })
+                });
+            } catch (e) { console.error(e); }
+        }
+        
+        function scheduleMidnightSave() {
+            const now = new Date();
+            const midnight = new Date(now);
+            midnight.setHours(24, 0, 0, 0);
+            const ms = midnight - now;
+            setTimeout(() => {
+                saveToHistory(state);
+                saveToSheets(state);
+                state = { 
+                    date: new Date().toDateString(), calIn: 0, calOut: 0, protein: 0, 
+                    sodium: 0, fiber: 0, sugar: 0, potassium: 0, calcium: 0, iron: 0, vitD: 0, magnesium: 0,
+                    steps: 0, workout: false, entries: [] 
+                };
+                saveState();
+                updateUI();
+                scheduleMidnightSave();
+            }, ms);
+        }
+        
+        // UI
+        function updateUI() {
+            document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            document.getElementById('calIn').textContent = state.calIn;
+            document.getElementById('protein').textContent = state.protein + 'g';
+            const net = state.calIn - state.calOut;
+            document.getElementById('net').textContent = net;
+            
+            // Calculate and display OWI scores
+            calculateScores();
+            
+            // OWI display
+            const owi = state.scores.owi;
+            document.getElementById('owiScore').textContent = owi > 0 ? Math.round(owi) : '--';
+            const owiEl = document.getElementById('owiRating');
+            if (owi >= 85) { owiEl.textContent = 'Excellent'; owiEl.style.color = '#90EE90'; }
+            else if (owi >= 70) { owiEl.textContent = 'Good'; owiEl.style.color = '#87CEEB'; }
+            else if (owi >= 55) { owiEl.textContent = 'Fair'; owiEl.style.color = '#FFD700'; }
+            else if (owi > 0) { owiEl.textContent = 'Needs Work'; owiEl.style.color = '#FF6B6B'; }
+            else { owiEl.textContent = 'OWI SCORE'; owiEl.style.color = 'rgba(255,255,255,0.8)'; }
+            
+            // OWI component bars
+            document.getElementById('dietPct').textContent = Math.round(state.scores.dietQuality);
+            document.getElementById('dietBar').style.width = Math.min(state.scores.dietQuality, 100) + '%';
+            document.getElementById('exPct').textContent = Math.round(state.scores.exercise);
+            document.getElementById('exBar').style.width = Math.min(state.scores.exercise, 100) + '%';
+            document.getElementById('surveyPct').textContent = Math.round(state.scores.survey);
+            document.getElementById('surveyBar').style.width = Math.min(state.scores.survey, 100) + '%';
+            document.getElementById('bodyPct').textContent = Math.round(state.scores.bodyMetrics);
+            document.getElementById('bodyBar').style.width = Math.min(state.scores.bodyMetrics, 100) + '%';
+            
+            // Standard bars
+            const calPct = Math.min(Math.round((net / TARGETS.cal) * 100), 100);
+            const worPct = Math.min(Math.round((state.protein / TARGETS.protein) * 100), 100);
+            const sodiumPct = Math.round(((state.sodium || 0) / TARGETS.sodium) * 100);
+            const sodiumBarWidth = Math.min(sodiumPct, 150);
+            document.getElementById('calPct').textContent = calPct;
+            document.getElementById('worPct').textContent = worPct;
+            document.getElementById('sodiumPct').textContent = sodiumPct;
+            document.getElementById('calBar').style.width = calPct + '%';
+            document.getElementById('worBar').style.width = worPct + '%';
+            document.getElementById('sodiumBar').style.width = sodiumBarWidth + '%';
+            document.getElementById('sodiumBar').style.background = sodiumPct > 100 ? '#ff6b6b' : '#ff9800';
+            
+            // New nutrient bars (fiber, sat fat, omega)
+            const fiberPct = Math.min(Math.round(((state.fiber || 0) / TARGETS.fiber) * 100), 150);
+            document.getElementById('fiberPct').textContent = fiberPct;
+            document.getElementById('fiberBar').style.width = Math.min(fiberPct, 100) + '%';
+            
+            const satFatPct = Math.round(((state.fatSaturated || 0) / TARGETS.satFat) * 100);
+            document.getElementById('satFatPct').textContent = satFatPct;
+            document.getElementById('satFatBar').style.width = Math.min(satFatPct, 150) + '%';
+            document.getElementById('satFatBar').style.background = satFatPct > 100 ? '#ff6b6b' : '#FF5722';
+            
+            const omegaVal = state.omegaScore || 0;
+            document.getElementById('omegaScore').textContent = (omegaVal >= 0 ? '+' : '') + omegaVal;
+            const omegaPct = Math.max(0, Math.min(100, ((omegaVal + 5) / 10) * 100)); // -5 to +5 range
+            document.getElementById('omegaBar').style.width = omegaPct + '%';
+            document.getElementById('omegaBar').style.background = omegaVal >= 3 ? '#4CAF50' : omegaVal >= 0 ? '#FF9800' : '#ff6b6b';
+            
+            // Goals section
+            document.getElementById('goalCal').textContent = net + '/1600';
+            document.getElementById('goalProtein').textContent = state.protein + '/110g';
+            document.getElementById('goalSodium').textContent = (state.sodium || 0) + '/2300mg';
+            document.getElementById('goalSteps').textContent = state.steps.toLocaleString() + '/7500';
+            
+            // Weight display in Summary section
+            const weight = localStorage.getItem('hed_weight') || '--';
+            document.getElementById('weightDisplay').textContent = weight + 'kg';
+            
+            // Waist display
+            const waistHistory = JSON.parse(localStorage.getItem('opu_waist_history') || '[]');
+            document.getElementById('waistDisplay').textContent = waistHistory.length > 0 ? waistHistory[0].waist + 'cm' : '--';
+            
+            // Today's Opu nutrients in Summary
+            document.getElementById('fiberToday').textContent = (state.fiber || 0) + '/' + TARGETS.fiber + 'g';
+            document.getElementById('satFatToday').textContent = (state.fatSaturated || 0) + '/' + TARGETS.satFat + 'g';
+            document.getElementById('fatToday').textContent = (state.fatTotal || 0) + 'g';
+            document.getElementById('omegaToday').textContent = (omegaVal >= 0 ? '+' : '') + omegaVal;
+            document.getElementById('vegToday').textContent = state.vegetableCount || 0;
+            document.getElementById('processedToday').textContent = state.processedCount || 0;
+            
+            // Other nutrients
+            document.getElementById('sugarToday').textContent = (state.sugar || 0) + '/' + TARGETS.sugar + 'g';
+            document.getElementById('potassiumToday').textContent = (state.potassium || 0) + '/' + TARGETS.potassium + 'mg';
+            document.getElementById('calciumToday').textContent = (state.calcium || 0) + '/' + TARGETS.calcium + 'mg';
+            document.getElementById('ironToday').textContent = (state.iron || 0) + '/' + TARGETS.iron + 'mg';
+            document.getElementById('vitDToday').textContent = (state.vitD || 0) + '/' + TARGETS.vitD + 'IU';
+            document.getElementById('magnesiumToday').textContent = (state.magnesium || 0) + '/' + TARGETS.magnesium + 'mg';
+            
+            // Survey status
+            const survey = state.survey || { morning: {}, evening: {} };
+            const morningEl = document.getElementById('surveyMorningStatus');
+            const eveningEl = document.getElementById('surveyEveningStatus');
+            if (survey.morning && survey.morning.sleepHours) {
+                morningEl.textContent = survey.morning.sleepHours + ' hrs';
+                morningEl.style.color = survey.morning.sleepHours === '7+' ? '#4CAF50' : survey.morning.sleepHours === '5-7' ? '#FF9800' : '#f44336';
+            } else {
+                morningEl.textContent = 'Not done';
+                morningEl.style.color = '#999';
+            }
+            if (survey.evening && survey.evening.answeredAt) {
+                const positives = (survey.evening.meditation ? 1 : 0) + (survey.evening.social ? 1 : 0) + (survey.evening.outdoors ? 1 : 0);
+                const negatives = (survey.evening.smoked ? 1 : 0) + (survey.evening.alcohol ? 1 : 0) + (survey.evening.sedentary ? 1 : 0) + (survey.evening.unwell ? 1 : 0);
+                eveningEl.textContent = '+' + positives + ' / -' + negatives;
+                eveningEl.style.color = negatives === 0 ? '#4CAF50' : '#FF9800';
+            } else {
+                eveningEl.textContent = 'Not done';
+                eveningEl.style.color = '#999';
+            }
+            
+            // Update nutrition summary
+            updateNutritionSummary();
+            
+            renderLog();
+            renderHistory();
+            renderPlan();
+            renderButtons();
+        }
+        
+        // OWI Scoring Functions
+        function calculateScores() {
+            state.scores.dietQuality = calculateDietScore();
+            state.scores.exercise = calculateExerciseScore();
+            state.scores.survey = calculateSurveyScore();
+            state.scores.bodyMetrics = calculateBodyScore();
+            
+            // OWI Composite
+            state.scores.owi = (state.scores.dietQuality * 0.30) + 
+                              (state.scores.exercise * 0.25) + 
+                              (state.scores.survey * 0.30) + 
+                              (state.scores.bodyMetrics * 0.15);
+            
+            if (state.scores.owi >= 85) state.scores.owiRating = 'Excellent';
+            else if (state.scores.owi >= 70) state.scores.owiRating = 'Good';
+            else if (state.scores.owi >= 55) state.scores.owiRating = 'Fair';
+            else state.scores.owiRating = 'Needs Work';
+        }
+        
+        function calculateDietScore() {
+            let score = 0;
+            // Fiber: +25 if 25g+
+            if ((state.fiber || 0) >= 25) score += 25;
+            // Omega: +25 if +3 or better
+            if ((state.omegaScore || 0) >= 3) score += 25;
+            // Sat fat: +15 if <18g
+            if ((state.fatSaturated || 0) < 18) score += 15;
+            // Sodium: +15 if <2300mg
+            if ((state.sodium || 0) < 2300) score += 15;
+            // Protein: +10 if 110g+
+            if ((state.protein || 0) >= 110) score += 10;
+            // Vegetables: +10 if any [V] items
+            if ((state.vegetableCount || 0) > 0) score += 10;
+            // Penalties
+            score -= (state.processedCount || 0) * 20;
+            score -= (state.sugaryCount || 0) * 20;
+            return Math.max(0, Math.min(100, score));
+        }
+        
+        function calculateExerciseScore() {
+            let score = 0;
+            // Calorie burn: +50 if 400+
+            if ((state.calOut || 0) >= 400) score += 50;
+            // Resistance training: +25
+            const hasResistance = state.entries.some(e => e.type === 'exercise' && e.isResistance);
+            if (hasResistance) score += 25;
+            // Variety: +15 if different from yesterday
+            const history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            if (history.length > 0 && state.lastExerciseType && history[0].lastExerciseType !== state.lastExerciseType) {
+                score += 15;
+            }
+            // Streak: +10 if 3+ days
+            if ((state.exerciseStreak || 0) >= 3) score += 10;
+            return Math.min(100, score);
+        }
+        
+        function calculateSurveyScore() {
+            let raw = 0;
+            const s = state.survey;
+            
+            // Morning: sleep
+            if (s.morning && s.morning.sleepHours) {
+                if (s.morning.sleepHours === '7+') raw += 100;
+                else if (s.morning.sleepHours === '5-7') raw += 0;
+                else if (s.morning.sleepHours === '<5') raw -= 100;
+            }
+            
+            // Evening toggles
+            if (s.evening) {
+                if (s.evening.meditation) raw += 100;
+                if (s.evening.social) raw += 50;
+                if (s.evening.outdoors) raw += 50;
+                if (s.evening.smoked) raw -= 100;
+                if (s.evening.alcohol) raw -= 100;
+                if (s.evening.sedentary) raw -= 100;
+                if (s.evening.unwell) raw -= 100;
+            }
+            
+            // Normalize: -500 to +300 → 0-100
+            return Math.max(0, Math.min(100, ((raw + 500) / 800) * 100));
+        }
+        
+        function calculateBodyScore() {
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            const waistHistory = JSON.parse(localStorage.getItem('opu_waist_history') || '[]');
+            
+            let weightTrendScore = 50; // default
+            if (weightHistory.length >= 2) {
+                const recent = weightHistory.slice(0, 7);
+                const diff = recent[0].weight - recent[recent.length - 1].weight;
+                if (diff < -0.2) weightTrendScore = 100; // losing (toward goal)
+                else if (Math.abs(diff) <= 0.2) weightTrendScore = 70; // stable
+                else weightTrendScore = 30; // gaining
+            }
+            
+            let waistTrendScore = 50; // default
+            if (waistHistory.length >= 2) {
+                const diff = waistHistory[0].waist - waistHistory[waistHistory.length - 1].waist;
+                if (diff < 0) waistTrendScore = 100; // decreasing
+                else if (diff === 0) waistTrendScore = 70; // stable
+                else waistTrendScore = 30; // increasing
+            }
+            
+            return (weightTrendScore * 0.67) + (waistTrendScore * 0.33);
+        }
+        
+        function updateNutritionSummary() {
+            const history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            
+            // Weight trend (last 7 days)
+            const weightTrendEl = document.getElementById('weightTrend');
+            if (weightTrendEl) {
+                if (weightHistory.length >= 2) {
+                    const recent = weightHistory.slice(0, 7);
+                    const oldest = recent[recent.length - 1]?.weight || 0;
+                    const newest = recent[0]?.weight || 0;
+                    const diff = (newest - oldest).toFixed(1);
+                    const trend = diff > 0 ? `+${diff}kg ↑` : diff < 0 ? `${diff}kg ↓` : '0kg →';
+                    weightTrendEl.textContent = trend;
+                    weightTrendEl.style.color = diff <= 0 ? '#4CAF50' : '#f44336';
+                } else {
+                    weightTrendEl.textContent = 'Need more data';
+                }
+            }
+            
+            // Workout streak
+            const workoutStreakEl = document.getElementById('workoutStreak');
+            if (workoutStreakEl && history.length > 0) {
+                let streak = 0;
+                for (const d of history) {
+                    if (d.workout) streak++;
+                    else break;
+                }
+                workoutStreakEl.textContent = streak + ' days';
+            } else if (workoutStreakEl) {
+                workoutStreakEl.textContent = '0 days';
+            }
+        }
+        
+        function renderPlan() {
+            const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+            const list = document.getElementById('planList');
+            if (!list) return;
+            
+            // Pilates Home exercises (from teacher)
+            const PILATES_EXERCISES = [
+                'Ball Balancing Tabletop & Return 2x10',
+                'Ball Hand-Up Tabletop, Curved Back Leg Extensions 2x8 each',
+                'Tabletop with Bicycle Motion 2x10 each',
+                'Curved Back Single Leg Tabletop Raises 2x10 each',
+                'Ball Under Ankles - Foot Circles 2x8 each dir',
+                'Chest Stretch Left & Right 2x30sec each',
+                'Prone Upper Torso Raises with Ball 2x12'
+            ];
+            
+            // Render Pilates card exercises
+            const pilatesEl = document.getElementById('pilatesExercises');
+            if (pilatesEl) {
+                pilatesEl.innerHTML = PILATES_EXERCISES.map((ex, j) => {
+                    const hint = EXERCISE_HINTS[ex];
+                    return `<div style="font-size:11px;color:#444;padding:3px 0;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;cursor:${hint ? 'pointer' : 'default'};" onclick="${hint ? `togglePilatesHint(${j})` : ''}">
+                            <span>• ${ex}</span>
+                            ${hint ? `<span id="pilatesArrow${j}" style="color:#999;font-size:10px;">ℹ️</span>` : ''}
+                        </div>
+                        ${hint ? `<div id="pilatesHint${j}" style="display:none;font-size:10px;color:#888;padding:4px 0 4px 12px;font-style:italic;">→ ${hint}</div>` : ''}
+                    </div>`;
+                }).join('');
+            }
+            
+            // Make Pilates card clickable to expand
+            const pilatesCard = document.getElementById('pilatesCard');
+            if (pilatesCard) {
+                pilatesCard.onclick = function(e) {
+                    if (e.target.closest('[onclick*="togglePilatesHint"]')) return; // Don't toggle if clicking hint
+                    const el = document.getElementById('pilatesExercises');
+                    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                };
+                pilatesCard.style.cursor = 'pointer';
+            }
+            
+            list.innerHTML = WEEKLY_PLAN.map((p, i) => `
+                <div class="summary-card" style="${p.day === todayName ? 'border-left: 4px solid #667eea; background: #f8f9ff;' : ''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="togglePlanDay(${i})">
+                        <span style="font-weight:600;font-size:13px;">${p.day}${p.day === todayName ? ' (TODAY)' : ''}</span>
+                        <span style="font-size:11px;color:#666;">${p.time} <span id="planArrow${i}">▶</span></span>
+                    </div>
+                    <div style="font-size:12px;color:#333;margin-top:6px;">💪 ${p.workout} ${p.cal ? `(${p.cal} cal)` : ''}</div>
+                    <div style="font-size:11px;color:#666;margin-top:4px;">${p.details}</div>
+                    <div id="planExercises${i}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+                        ${p.exercises.map((ex, j) => {
+                            const hint = EXERCISE_HINTS[ex];
+                            const isHeader = ex.startsWith('—');
+                            if (isHeader) {
+                                return `<div style="font-size:11px;color:#667eea;font-weight:600;padding:8px 0 4px 0;">${ex}</div>`;
+                            }
+                            return `<div style="font-size:11px;color:#444;padding:3px 0;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;cursor:${hint ? 'pointer' : 'default'};" onclick="${hint ? `toggleExHint(${i},${j})` : ''}">
+                                    <span>• ${ex}</span>
+                                    ${hint ? `<span id="exArrow${i}_${j}" style="color:#999;font-size:10px;">ℹ️</span>` : ''}
+                                </div>
+                                ${hint ? `<div id="exHint${i}_${j}" style="display:none;font-size:10px;color:#888;padding:4px 0 4px 12px;font-style:italic;">→ ${hint}</div>` : ''}
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function togglePlanDay(i) {
+            const el = document.getElementById('planExercises' + i);
+            const arrow = document.getElementById('planArrow' + i);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                arrow.textContent = '▼';
+            } else {
+                el.style.display = 'none';
+                arrow.textContent = '▶';
+            }
+        }
+        
+        function toggleExHint(dayIdx, exIdx) {
+            const el = document.getElementById(`exHint${dayIdx}_${exIdx}`);
+            if (el) {
+                el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        function togglePilatesHint(idx) {
+            const el = document.getElementById(`pilatesHint${idx}`);
+            if (el) {
+                el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        function renderLog() {
+            const list = document.getElementById('logList');
+            if (!state.entries.length) {
+                list.innerHTML = '<div class="no-entries">No entries yet</div>';
+                return;
+            }
+            list.innerHTML = state.entries.map((e, i) => `
+                <div class="summary-item">
+                    <div class="item-left">
+                        <div class="item-dot ${e.type}"></div>
+                        <span class="item-name">${e.name}</span>
+                    </div>
+                    <span class="item-values">${e.type === 'food' ? e.cal + '/' + e.protein + 'g' + (e.sodium ? '/' + e.sodium + 'mg' : '') : e.cal + ' cal'}</span>
+                    <button class="item-delete" onclick="deleteEntry(${i})">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function renderHistory() {
+            // First show local history - auto dedupe by normalized date
+            let history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+            
+            // Normalize and dedupe
+            const normalizeDate = (d) => {
+                if (!d) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                try {
+                    const parsed = new Date(d);
+                    if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+                } catch {}
+                return d;
+            };
+            
+            // Create weight lookup by date
+            const weightByDate = {};
+            weightHistory.forEach(w => { weightByDate[w.date] = w.weight; });
+            
+            const seen = new Set();
+            history = history.filter(h => {
+                const norm = normalizeDate(h.date);
+                if (seen.has(norm)) return false;
+                seen.add(norm);
+                h.date = norm; // Normalize the date
+                // Add weight from weightHistory if available
+                if (weightByDate[norm]) {
+                    h.weight = weightByDate[norm];
+                }
+                return true;
+            });
+            localStorage.setItem('hed_history', JSON.stringify(history));
+            
+            const list = document.getElementById('historyList');
+            if (!history.length) {
+                list.innerHTML = '<div class="no-entries">No history yet</div>';
+            } else {
+                list.innerHTML = history.map((d, i) => `
+                    <div class="history-card">
+                        <div class="history-date" onclick="toggleHistoryDetail(${i})" style="cursor:pointer;">
+                            <span>${d.date} ${d.weight ? '<span style="color:#667eea;">⚖️' + d.weight + 'kg</span>' : ''}</span>
+                            <span><span id="histArrowLocal${i}">▶</span></span>
+                        </div>
+                        <div class="history-stats">
+                            <div class="history-stat ${d.calIn <= TARGETS.cal ? 'good' : 'bad'}"><div class="history-stat-value">${d.calIn}</div><div class="history-stat-label">Cal In</div></div>
+                            <div class="history-stat ${d.protein >= TARGETS.protein ? 'good' : ''}"><div class="history-stat-value">${d.protein}g</div><div class="history-stat-label">Protein</div></div>
+                            <div class="history-stat ${d.calOut >= 400 ? 'good' : 'bad'}"><div class="history-stat-value">${d.calOut}</div><div class="history-stat-label">Burned</div></div>
+                            <div class="history-stat"><div class="history-stat-value">${(d.steps||0).toLocaleString()}</div><div class="history-stat-label">Steps</div></div>
+                        </div>
+                        <div id="histDetailLocal${i}" style="display:none;padding:10px 0;border-top:1px solid #eee;margin-top:8px;font-size:11px;">
+                            ${d.entries && d.entries.length > 0 ? d.entries.map(e => 
+                                `<div style="display:flex;justify-content:space-between;padding:2px 0;">
+                                    <span>${e.type === 'food' ? '🍽️' : '💪'} ${e.name}</span>
+                                    <span>${e.type === 'food' ? e.cal + 'cal / ' + e.protein + 'g' : e.cal + ' burned'}</span>
+                                </div>`
+                            ).join('') : '<div style="color:#999;">No detailed entries</div>'}
+                        </div>
+                        <button onclick="deleteHistoryItem(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#ccc;font-size:14px;cursor:pointer;">×</button>
+                    </div>
+                `).join('');
+            }
+            
+            // Always load from Sheets when signed in - sheet data takes priority
+            if (accessToken) {
+                loadHistoryFromSheets();
+            }
+        }
+        
+        function toggleHistoryDetail(i) {
+            // Try both local and sheet detail elements
+            let el = document.getElementById('histDetailLocal' + i);
+            let arrow = document.getElementById('histArrowLocal' + i);
+            if (!el) {
+                el = document.getElementById('histDetail' + i);
+                arrow = document.getElementById('histArrow' + i);
+            }
+            if (!el) return;
+            
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                if (arrow) arrow.textContent = '▼';
+            } else {
+                el.style.display = 'none';
+                if (arrow) arrow.textContent = '▶';
+            }
+        }
+        
+        async function loadHistoryFromSheets() {
+            if (!accessToken) return;
+            try {
+                // New columns: Date(A), Cal In(B), Protein(C), Sodium(D), Cal Out(E), Steps(F), Weight(G), Net(H), Workout(I), Items(J)
+                const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/DailyLog-OPU!A2:J100`, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (res.status !== 200) return;
+                
+                const data = await res.json();
+                if (!data.values || !data.values.length) return;
+                
+                // Normalize date function
+                const normalizeDate = (d) => {
+                    if (!d) return '';
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+                    try {
+                        const parsed = new Date(d);
+                        if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+                    } catch {}
+                    return d;
+                };
+                
+                // Convert sheet rows to history format, dedupe by normalized date
+                // Columns: Date(0), Cal In(1), Protein(2), Sodium(3), Cal Out(4), Steps(5), Weight(6), Net(7), Workout(8), Items(9)
+                const seenDates = new Set();
+                const sheetHistory = [];
+                data.values.forEach(row => {
+                    const rawDate = row[0];
+                    const date = normalizeDate(rawDate);
+                    if (date && !seenDates.has(date)) {
+                        seenDates.add(date);
+                        sheetHistory.push({
+                            date: date,
+                            calIn: parseInt(row[1]) || 0,
+                            protein: parseInt(row[2]) || 0,
+                            sodium: parseInt(row[3]) || 0,
+                            calOut: parseInt(row[4]) || 0,
+                            steps: parseInt(row[5]) || 0,
+                            weight: parseFloat(row[6]) || 0,
+                            workout: row[8] === 'Yes'
+                        });
+                    }
+                });
+                
+                // Merge with local history (dedupe by normalized date)
+                const localHistory = JSON.parse(localStorage.getItem('hed_history') || '[]');
+                localHistory.forEach(h => {
+                    const normDate = normalizeDate(h.date);
+                    if (!seenDates.has(normDate)) {
+                        seenDates.add(normDate);
+                        h.date = normDate;
+                        sheetHistory.push(h);
+                    }
+                });
+                
+                // Sort by date descending
+                sheetHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                // Merge weight history
+                const weightHistory = JSON.parse(localStorage.getItem('hed_weight_history') || '[]');
+                const weightByDate = {};
+                weightHistory.forEach(w => { weightByDate[w.date] = w.weight; });
+                sheetHistory.forEach(h => {
+                    if (weightByDate[h.date]) {
+                        h.weight = weightByDate[h.date];
+                    }
+                });
+                
+                // Save and render
+                localStorage.setItem('hed_history', JSON.stringify(sheetHistory.slice(0, 30)));
+                
+                // Re-render
+                const list = document.getElementById('historyList');
+                if (sheetHistory.length === 0) {
+                    list.innerHTML = '<div class="no-entries">No history yet</div>';
+                    return;
+                }
+                list.innerHTML = sheetHistory.slice(0, 30).map((d, i) => `
+                    <div class="history-card">
+                        <div class="history-date" onclick="toggleHistoryDetail(${i})" style="cursor:pointer;">
+                            <span>${d.date} ${d.weight ? '⚖️' + d.weight + 'kg' : ''}</span>
+                            <span><span id="histArrow${i}">▶</span></span>
+                        </div>
+                        <div class="history-stats">
+                            <div class="history-stat ${d.calIn <= TARGETS.cal ? 'good' : 'bad'}"><div class="history-stat-value">${d.calIn}</div><div class="history-stat-label">Cal In</div></div>
+                            <div class="history-stat ${d.protein >= TARGETS.protein ? 'good' : ''}"><div class="history-stat-value">${d.protein}g</div><div class="history-stat-label">Protein</div></div>
+                            <div class="history-stat ${d.calOut >= 400 ? 'good' : 'bad'}"><div class="history-stat-value">${d.calOut}</div><div class="history-stat-label">Burned</div></div>
+                            <div class="history-stat"><div class="history-stat-value">${(d.steps||0).toLocaleString()}</div><div class="history-stat-label">Steps</div></div>
+                        </div>
+                        <div id="histDetail${i}" style="display:none;padding:10px 0;border-top:1px solid #eee;margin-top:8px;font-size:11px;">
+                            ${d.entries && d.entries.length > 0 ? d.entries.map(e => 
+                                `<div style="display:flex;justify-content:space-between;padding:2px 0;">
+                                    <span>${e.type === 'food' ? '🍽️' : '💪'} ${e.name}</span>
+                                    <span>${e.type === 'food' ? e.cal + 'cal / ' + e.protein + 'g' : e.cal + ' burned'}</span>
+                                </div>`
+                            ).join('') : '<div style="color:#999;">No detailed entries</div>'}
+                            <div style="margin-top:8px;text-align:right;">
+                                <button onclick="deleteHistoryItem(${i})" style="background:#ff6b6b;color:white;border:none;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;">Delete Day</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load history error:', e);
+            }
+        }
+        
+        function deleteHistoryItem(index) {
+            let history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            if (index >= 0 && index < history.length) {
+                history.splice(index, 1);
+                localStorage.setItem('hed_history', JSON.stringify(history));
+                renderHistory();
+                toast('Deleted from history');
+            }
+        }
+        
+        function showPane(name) {
+            // Remove active from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            // Remove active from all panes
+            const panes = document.querySelectorAll('.pane');
+            panes.forEach(p => p.classList.remove('active'));
+            
+            // Add active to selected tab
+            if (name === 'today') tabs[0].classList.add('active');
+            else if (name === 'add') tabs[1].classList.add('active');
+            else if (name === 'plan') tabs[2].classList.add('active');
+            else if (name === 'history') tabs[3].classList.add('active');
+            
+            // Add active to selected pane
+            const pane = document.getElementById(name + 'Pane');
+            if (pane) pane.classList.add('active');
+        }
+        
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+        
+        // Actions
+        function addFood(name, cal, protein, nutrients = {}) {
+            state.calIn += cal;
+            state.protein += protein;
+            state.sodium = (state.sodium || 0) + (nutrients.sodium || 0);
+            state.fiber = (state.fiber || 0) + (nutrients.fiber || 0);
+            state.fatTotal = (state.fatTotal || 0) + (nutrients.fatTotal || 0);
+            state.fatSaturated = (state.fatSaturated || 0) + (nutrients.fatSaturated || 0);
+            state.omegaScore = (state.omegaScore || 0) + (nutrients.omegaScore || 0);
+            state.sugar = (state.sugar || 0) + (nutrients.sugar || 0);
+            state.potassium = (state.potassium || 0) + (nutrients.potassium || 0);
+            state.calcium = (state.calcium || 0) + (nutrients.calcium || 0);
+            state.iron = (state.iron || 0) + (nutrients.iron || 0);
+            state.vitD = (state.vitD || 0) + (nutrients.vitD || 0);
+            state.magnesium = (state.magnesium || 0) + (nutrients.magnesium || 0);
+            // Track food flags
+            if (nutrients.isVegetable) state.vegetableCount = (state.vegetableCount || 0) + 1;
+            if (nutrients.isProcessed) state.processedCount = (state.processedCount || 0) + 1;
+            if (nutrients.isSugary) state.sugaryCount = (state.sugaryCount || 0) + 1;
+            
+            state.entries.push({ type: 'food', name, cal, protein, ...nutrients, time: Date.now() });
+            trackUsage(name);
+            saveState();
+            updateUI();
+            toast('Added ' + name);
+        }
+        
+        function addExercise(name, cal, isResistance = false) {
+            state.calOut += cal;
+            state.lastExerciseType = name;
+            // Update exercise streak
+            const history = JSON.parse(localStorage.getItem('hed_history') || '[]');
+            if (history.length > 0 && history[0].calOut >= 400) {
+                state.exerciseStreak = (state.exerciseStreak || 0) + 1;
+            } else {
+                state.exerciseStreak = 1;
+            }
+            // Check if resistance exercise
+            const resistanceTypes = ['Resistance', 'Ab Circuit', 'Push', 'Pull', 'Weights'];
+            const isRes = isResistance || resistanceTypes.some(t => name.toLowerCase().includes(t.toLowerCase()));
+            
+            state.entries.push({ type: 'exercise', name, cal, isResistance: isRes, time: Date.now() });
+            trackUsage(name);
+            saveState();
+            updateUI();
+            toast('Added ' + name);
+        }
+        
+        function deleteEntry(i) {
+            const e = state.entries[i];
+            if (e.type === 'food') {
+                state.calIn -= e.cal;
+                state.protein -= e.protein;
+                state.sodium = (state.sodium || 0) - (e.sodium || 0);
+                state.fiber = (state.fiber || 0) - (e.fiber || 0);
+                state.fatTotal = (state.fatTotal || 0) - (e.fatTotal || 0);
+                state.fatSaturated = (state.fatSaturated || 0) - (e.fatSaturated || 0);
+                state.omegaScore = (state.omegaScore || 0) - (e.omegaScore || 0);
+                state.sugar = (state.sugar || 0) - (e.sugar || 0);
+                state.potassium = (state.potassium || 0) - (e.potassium || 0);
+                state.calcium = (state.calcium || 0) - (e.calcium || 0);
+                state.iron = (state.iron || 0) - (e.iron || 0);
+                state.vitD = (state.vitD || 0) - (e.vitD || 0);
+                state.magnesium = (state.magnesium || 0) - (e.magnesium || 0);
+                if (e.isVegetable) state.vegetableCount = (state.vegetableCount || 0) - 1;
+                if (e.isProcessed) state.processedCount = (state.processedCount || 0) - 1;
+                if (e.isSugary) state.sugaryCount = (state.sugaryCount || 0) - 1;
+            } else {
+                state.calOut -= e.cal;
+                if (e.steps) state.steps = 0;
+            }
+            state.entries.splice(i, 1);
+            state.lastModified = Date.now(); // Track deletion time
+            saveState();
+            updateUI();
+            toast('Deleted ' + e.name);
+        }
+        
+        // Steps
+        async function syncSteps() {
+            await ensureValidToken();
+            if (!accessToken) { googleSignIn(); return; }
+            toast('Syncing steps...');
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            try {
+                const res = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        aggregateBy: [{ dataTypeName: 'com.google.step_count.delta', dataSourceId: 'derived:com.google.step_count.delta:com.google.android.gms:estimated_steps' }],
+                        bucketByTime: { durationMillis: 86400000 },
+                        startTimeMillis: start,
+                        endTimeMillis: now.getTime()
+                    })
+                });
+                if (res.status === 401) {
+                    handleAuthError();
+                    return;
+                }
+                const data = await res.json();
+                let steps = 0;
+                data.bucket?.forEach(b => b.dataset?.forEach(d => d.point?.forEach(p => { steps += p.value?.[0]?.intVal || 0; })));
+                
+                const oldCal = Math.round(state.steps * 0.04);
+                const newCal = Math.round(steps * 0.04);
+                state.calOut = state.calOut - oldCal + newCal;
+                state.steps = steps;
+                
+                const idx = state.entries.findIndex(e => e.name?.includes('Steps'));
+                if (idx >= 0) state.entries[idx] = { type: 'exercise', name: 'Steps (Synced)', cal: newCal, steps, time: Date.now() };
+                else state.entries.push({ type: 'exercise', name: 'Steps (Synced)', cal: newCal, steps, time: Date.now() });
+                
+                saveState();
+                updateUI();
+                toast(steps.toLocaleString() + ' steps synced');
+            } catch (e) {
+                console.error(e);
+                toast('Sync failed');
+            }
+        }
+        
+        function saveManualSteps() {
+            const steps = parseInt(document.getElementById('stepsInput').value) || 0;
+            const oldCal = Math.round(state.steps * 0.04);
+            const newCal = Math.round(steps * 0.04);
+            state.calOut = state.calOut - oldCal + newCal;
+            state.steps = steps;
+            
+            const idx = state.entries.findIndex(e => e.name?.includes('Steps'));
+            if (idx >= 0) state.entries[idx] = { type: 'exercise', name: 'Steps (Manual)', cal: newCal, steps, time: Date.now() };
+            else state.entries.push({ type: 'exercise', name: 'Steps (Manual)', cal: newCal, steps, time: Date.now() });
+            
+            saveState();
+            updateUI();
+            closeModal('stepsModal');
+            showPane('today');
+            toast(steps.toLocaleString() + ' steps logged');
+        }
+        
+        // Photo
+        function takePhoto() { document.getElementById('cameraInput').click(); }
+        function uploadPhoto() { document.getElementById('photoInput').click(); }
+        
+        function handlePhoto(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                photoData = ev.target.result;
+                document.getElementById('photoPreview').src = photoData;
+                document.getElementById('photoPreview').style.display = 'block';
+                document.getElementById('photoModal').classList.add('open');
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+        
+        function savePhoto() {
+            const name = document.getElementById('photoName').value || 'Meal';
+            const cal = parseInt(document.getElementById('photoCal').value) || 0;
+            const protein = parseInt(document.getElementById('photoPro').value) || 0;
+            state.calIn += cal;
+            state.protein += protein;
+            state.entries.push({ type: 'food', name, cal, protein, photo: photoData, time: Date.now() });
+            saveState();
+            updateUI();
+            closeModal('photoModal');
+            document.getElementById('photoName').value = '';
+            document.getElementById('photoCal').value = '';
+            document.getElementById('photoPro').value = '';
+            photoData = null;
+            showPane('today');
+            toast('Added ' + name);
+        }
+        
+        // Custom
+        function openCustom() { document.getElementById('customModal').classList.add('open'); }
+        
+        function saveCustom() {
+            const name = document.getElementById('customName').value || 'Custom';
+            const cal = parseInt(document.getElementById('customCal').value) || 0;
+            const protein = parseInt(document.getElementById('customPro').value) || 0;
+            addFood(name, cal, protein);
+            closeModal('customModal');
+            document.getElementById('customName').value = '';
+            document.getElementById('customCal').value = '';
+            document.getElementById('customPro').value = '';
+        }
+        
+        function promptWeight() {
+            const weight = prompt('Enter weight in kg:', localStorage.getItem('hed_weight') || '');
+            if (weight && !isNaN(parseFloat(weight))) {
+                localStorage.setItem('hed_weight', parseFloat(weight).toFixed(1));
+                localStorage.setItem('hed_weight_date', new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                updateUI();
+                toast('Weight logged: ' + weight + 'kg');
+            }
+        }
+        
+        async function syncWeight() {
+            if (!accessToken) { googleSignIn(); return; }
+            toast('Syncing weight...');
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime(); // Last 30 days
+            try {
+                const res = await fetch('https://www.googleapis.com/fitness/v1/users/me/dataSources/derived:com.google.weight:com.google.android.gms:merge_weight/datasets/' + start + '000000-' + now.getTime() + '000000', {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+                if (res.status === 401) {
+                    toast('Please sign in again');
+                    return;
+                }
+                const data = await res.json();
+                if (data.point && data.point.length > 0) {
+                    // Get most recent weight for display
+                    const latest = data.point[data.point.length - 1];
+                    const weightKg = latest.value[0].fpVal;
+                    const weightDate = new Date(parseInt(latest.startTimeNanos) / 1000000);
+                    
+                    localStorage.setItem('hed_weight', weightKg.toFixed(1));
+                    localStorage.setItem('hed_weight_date', weightDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    
+                    // Build weight history - first weight of each day
+                    const weightByDay = {};
+                    for (const point of data.point) {
+                        const date = new Date(parseInt(point.startTimeNanos) / 1000000);
+                        const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD
+                        const weight = point.value[0].fpVal;
+                        // Only store first weight of day
+                        if (!weightByDay[dateStr]) {
+                            weightByDay[dateStr] = weight;
+                        }
+                    }
+                    
+                    // Convert to sorted array (newest first)
+                    const weightHistory = Object.entries(weightByDay)
+                        .map(([date, weight]) => ({ date, weight: parseFloat(weight.toFixed(1)) }))
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .slice(0, 30); // Keep last 30 days
+                    
+                    localStorage.setItem('hed_weight_history', JSON.stringify(weightHistory));
+                    
+                    updateUI();
+                    toast('Weight: ' + weightKg.toFixed(1) + 'kg');
+                } else {
+                    toast('No weight data found');
+                }
+            } catch (e) {
+                console.error('Weight sync error:', e);
+                toast('Weight sync failed');
+            }
+        }
+        
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        
+        // Save food to FoodDB sheet if not already there
+        async function saveToFoodDB(name, cal, protein, sodium, opuData = {}) {
+            await ensureValidToken();
+            if (!accessToken) return;
+            // Check if already in database
+            const exists = ALL_FOODS.some(f => f.name.toLowerCase() === name.toLowerCase());
+            if (exists) return;
+            
+            try {
+                // New FoodDB columns: Name(A), Cal(B), Protein(C), Sodium(D), FatTotal(E), FatSaturated(F), 
+                // OmegaScore(G), Flags(H), Fiber(I), Sugar(J), Potassium(K), Calcium(L), Iron(M), VitD(N), Magnesium(O), Icon(P), Short(Q)
+                const fatTotal = opuData.fatTotal || 0;
+                const fatSaturated = opuData.fatSaturated || 0;
+                const omegaScore = opuData.omegaScore || 0;
+                let flags = '';
+                if (opuData.isVegetable) flags += 'V,';
+                if (opuData.isProcessed) flags += 'P,';
+                if (opuData.isSugary) flags += 'S,';
+                if (omegaScore >= 3) flags += 'O+,';
+                if (omegaScore <= -1) flags += 'O-,';
+                flags = flags.replace(/,$/, ''); // Remove trailing comma
+                
+                const fiber = opuData.fiber || Math.round(cal / 200);
+                const sugar = Math.round(cal / 50);
+                const potassium = Math.round(cal * 0.5);
+                const calcium = Math.round(protein * 3);
+                const iron = Math.round(protein / 15);
+                const vitD = 0;
+                const magnesium = Math.round(cal / 20);
+                const icon = '🍽️';
+                const short = name.length > 12 ? name.substring(0, 10) + '..' : '';
+                
+                const row = [[name, cal, protein, sodium, fatTotal, fatSaturated, omegaScore, flags, fiber, sugar, potassium, calcium, iron, vitD, magnesium, icon, short]];
+                
+                const res = await authFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/FoodDB!A:Q:append?valueInputOption=USER_ENTERED`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: row })
+                });
+                
+                if (res && res.ok) {
+                    // Add to local array only if save succeeded
+                    ALL_FOODS.push({ name, cal, protein, sodium, fatTotal, fatSaturated, omegaScore, fiber, sugar, potassium, calcium, iron, vitD, magnesium, icon, short, isVegetable: opuData.isVegetable, isProcessed: opuData.isProcessed, isSugary: opuData.isSugary });
+                    renderButtons();
+                    console.log('Saved to FoodDB:', name);
+                } else {
+                    console.error('Save to FoodDB failed - response not ok');
+                }
+            } catch (e) {
+                console.error('Save to FoodDB error:', e);
+            }
+        }
+        
+        // Save food with FULL nutrients to FoodDB sheet
+        async function saveToFoodDBFull(name, cal, protein, nutrients) {
+            await ensureValidToken();
+            if (!accessToken) return;
+            const exists = ALL_FOODS.some(f => f.name.toLowerCase() === name.toLowerCase());
+            if (exists) return;
+            
+            try {
+                const icon = '🍽️';
+                const short = name.length > 12 ? name.substring(0, 10) + '..' : '';
+                
+                let flags = '';
+                if (nutrients.isVegetable) flags += 'V,';
+                if (nutrients.isProcessed) flags += 'P,';
+                if (nutrients.isSugary) flags += 'S,';
+                if ((nutrients.omegaScore || 0) >= 3) flags += 'O+,';
+                if ((nutrients.omegaScore || 0) <= -1) flags += 'O-,';
+                flags = flags.replace(/,$/, '');
+                
+                // New FoodDB columns: Name, Cal, Protein, Sodium, FatTotal, FatSaturated, OmegaScore, Flags, Fiber, Sugar, Potassium, Calcium, Iron, VitD, Magnesium, Icon, Short
+                const row = [[name, cal, protein, nutrients.sodium || 0, 
+                              nutrients.fatTotal || 0, nutrients.fatSaturated || 0, nutrients.omegaScore || 0, flags,
+                              nutrients.fiber || 0, nutrients.sugar || 0, nutrients.potassium || 0, nutrients.calcium || 0, 
+                              nutrients.iron || 0, nutrients.vitD || 0, nutrients.magnesium || 0, icon, short]];
+                
+                const res = await authFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/FoodDB!A:Q:append?valueInputOption=USER_ENTERED`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: row })
+                });
+                
+                if (res && res.ok) {
+                    ALL_FOODS.push({ name, cal, protein, ...nutrients, icon, short });
+                    renderButtons();
+                    console.log('Saved to FoodDB (full):', name);
+                } else {
+                    console.error('Save to FoodDB (full) failed - response not ok');
+                }
+            } catch (e) {
+                console.error('Save to FoodDB error:', e);
+            }
+        }
+        
+        // Input parsing
+        function parseInput() {
+            let input = document.getElementById('inputField').value.trim();
+            if (!input) return;
+            
+            // Remove quotes and invisible characters
+            input = input.replace(/^['"""']+|['"""']+$/g, '');
+            input = input.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ''); // zero-width chars, nbsp
+            
+            // Extract flags first: [V], [P], [S], [O+], [O-]
+            const flags = {
+                isVegetable: /\[V\]/i.test(input),
+                isProcessed: /\[P\]/i.test(input),
+                isSugary: /\[S\]/i.test(input),
+                omegaPlus: /\[O\+\]/i.test(input),
+                omegaMinus: /\[O-\]/i.test(input)
+            };
+            // Remove flags from input for parsing
+            input = input.replace(/\s*\[[VPSvps]\]\s*/gi, ' ').replace(/\s*\[O[\+\-]\]\s*/gi, ' ').trim();
+            
+            // Determine omega score from flags
+            let omegaScore = 0;
+            if (flags.omegaPlus) omegaScore = 3;
+            else if (flags.omegaMinus) omegaScore = -2;
+            
+            // Match NEW Opu Light format: Name 000cal 00g protein 000mg sodium 00g fat (0g sat) 0g fiber
+            const matchOpu = input.match(/^(.+?)\s+(\d+)\s*cal\s+(\d+)\s*g(?:\s+protein)?\s+(\d+)\s*mg(?:\s+sodium)?\s+(\d+)\s*g\s*fat\s*\((\d+)\s*g\s*sat\)\s+(\d+)\s*g\s*fiber$/i);
+            if (matchOpu) {
+                const name = matchOpu[1].trim();
+                const cal = parseInt(matchOpu[2]);
+                const protein = parseInt(matchOpu[3]);
+                const nutrients = {
+                    sodium: parseInt(matchOpu[4]),
+                    fatTotal: parseInt(matchOpu[5]),
+                    fatSaturated: parseInt(matchOpu[6]),
+                    fiber: parseInt(matchOpu[7]),
+                    omegaScore: omegaScore,
+                    isVegetable: flags.isVegetable,
+                    isProcessed: flags.isProcessed,
+                    isSugary: flags.isSugary
+                };
+                addFood(name, cal, protein, nutrients);
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match FULL nutrients: Name 000cal 00g 000mg 0f 0s 000k 00ca 0fe 0d 00ma
+            // Order: cal, protein, sodium, fiber, sugar, potassium, calcium, iron, vitD, magnesium
+            const matchFull = input.match(/^(.+?)\s+(\d+)\s*cal\s+(\d+)\s*g\s+(\d+)\s*mg\s+(\d+)\s*f\s+(\d+)\s*s\s+(\d+)\s*k\s+(\d+)\s*ca\s+(\d+)\s*fe\s+(\d+)\s*d\s+(\d+)\s*ma$/i);
+            if (matchFull) {
+                const name = matchFull[1].trim();
+                const cal = parseInt(matchFull[2]);
+                const protein = parseInt(matchFull[3]);
+                const nutrients = {
+                    sodium: parseInt(matchFull[4]),
+                    fiber: parseInt(matchFull[5]),
+                    sugar: parseInt(matchFull[6]),
+                    potassium: parseInt(matchFull[7]),
+                    calcium: parseInt(matchFull[8]),
+                    iron: parseInt(matchFull[9]),
+                    vitD: parseInt(matchFull[10]),
+                    magnesium: parseInt(matchFull[11]),
+                    omegaScore: omegaScore,
+                    isVegetable: flags.isVegetable,
+                    isProcessed: flags.isProcessed,
+                    isSugary: flags.isSugary
+                };
+                addFood(name, cal, protein, nutrients);
+                saveToFoodDBFull(name, cal, protein, nutrients);
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match: Name 000cal 00g 000mg (with sodium only)
+            const matchWithSodium = input.match(/^(.+?)\s+(\d+)\s*cal\s+(\d+)\s*g\s+(\d+)\s*mg$/i);
+            if (matchWithSodium) {
+                const name = matchWithSodium[1].trim();
+                const cal = parseInt(matchWithSodium[2]);
+                const protein = parseInt(matchWithSodium[3]);
+                const sodium = parseInt(matchWithSodium[4]);
+                addFood(name, cal, protein, { 
+                    sodium, 
+                    omegaScore: omegaScore,
+                    isVegetable: flags.isVegetable,
+                    isProcessed: flags.isProcessed,
+                    isSugary: flags.isSugary
+                });
+                saveToFoodDB(name, cal, protein, sodium);
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match: Name 000cal 00g (without sodium - estimate based on food type)
+            const match = input.match(/^(.+?)\s+(\d+)\s*cal\s*(\d+)\s*g?$/i);
+            if (match) {
+                const name = match[1].trim();
+                const cal = parseInt(match[2]);
+                const protein = parseInt(match[3]);
+                const estimatedSodium = Math.round(cal * 0.5);
+                addFood(name, cal, protein, { 
+                    sodium: estimatedSodium,
+                    omegaScore: omegaScore,
+                    isVegetable: flags.isVegetable,
+                    isProcessed: flags.isProcessed,
+                    isSugary: flags.isSugary
+                });
+                saveToFoodDB(name, cal, protein, estimatedSodium); // Auto-save to sheet
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match: Name 000cal00g (no space between cal and protein)
+            const match1b = input.match(/^(.+?)\s+(\d+)\s*cal(\d+)\s*g?$/i);
+            if (match1b) {
+                const name = match1b[1].trim();
+                const cal = parseInt(match1b[2]);
+                const protein = parseInt(match1b[3]);
+                const estimatedSodium = Math.round(cal * 0.5);
+                addFood(name, cal, protein, { 
+                    sodium: estimatedSodium,
+                    omegaScore: omegaScore,
+                    isVegetable: flags.isVegetable,
+                    isProcessed: flags.isProcessed,
+                    isSugary: flags.isSugary
+                });
+                saveToFoodDB(name, cal, protein, estimatedSodium); // Auto-save to sheet
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match: Name 000cal
+            const match2 = input.match(/^(.+?)\s+(\d+)\s*cal$/i);
+            if (match2) {
+                const name = match2[1].trim();
+                const cal = parseInt(match2[2]);
+                const estimatedSodium = Math.round(cal * 0.5);
+                addFood(name, cal, 0, { sodium: estimatedSodium });
+                saveToFoodDB(name, cal, 0, estimatedSodium); // Auto-save to sheet
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            // Match: 0000 steps
+            const match3 = input.match(/^(\d+)\s*steps?$/i);
+            if (match3) {
+                document.getElementById('stepsInput').value = match3[1];
+                saveManualSteps();
+                document.getElementById('inputField').value = '';
+                return;
+            }
+            
+            toast('Format: Food 650cal 35g 800mg');
+        }
+        
+        document.getElementById('inputField').addEventListener('keypress', e => { if (e.key === 'Enter') parseInput(); });
+        
+        // Copy functions
+        function copySummary() {
+            const net = state.calIn - state.calOut;
+            const text = `Cal: ${state.calIn}/1600 | Protein: ${state.protein}/110g | Burned: ${state.calOut} | Net: ${net}`;
+            navigator.clipboard.writeText(text);
+            toast('Summary copied!');
+        }
+        
+        function copyFull() {
+            const date = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            let text = `HED ${date}:\n`;
+            state.entries.forEach(e => {
+                if (e.type === 'food') text += `• ${e.name} (${e.cal}/${e.protein}g)\n`;
+                else text += `• ${e.name} (${e.cal} cal)\n`;
+            });
+            const net = state.calIn - state.calOut;
+            text += `---\nCal: ${state.calIn}/1600 | Protein: ${state.protein}/110g | Burned: ${state.calOut} | Net: ${net}`;
+            navigator.clipboard.writeText(text);
+            toast('Full log copied!');
+        }
+        
+        function copyDaySummary() {
+            const date = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const net = state.calIn - state.calOut;
+            const weight = localStorage.getItem('hed_weight') || '--';
+            let text = `HED ${date}\n`;
+            text += `Weight: ${weight}kg\n`;
+            text += `Cal In: ${state.calIn}/1600 | Net: ${net}\n`;
+            text += `Protein: ${state.protein}/110g\n`;
+            text += `Sodium: ${state.sodium || 0}/2300mg\n`;
+            text += `Cal Burned: ${state.calOut}\n`;
+            text += `Steps: ${state.steps.toLocaleString()}/7500`;
+            navigator.clipboard.writeText(text);
+            toast('Day summary copied!');
+        }
+        
+        // Survey Functions
+        function checkSurveys() {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            // Ensure survey object exists in state
+            if (!state.survey) {
+                state.survey = {
+                    morning: { sleepHours: null, answeredAt: null, retrospective: false },
+                    evening: { meditation: false, social: false, outdoors: false, smoked: false, alcohol: false, sedentary: false, unwell: false, answeredAt: null, retrospective: false }
+                };
+            }
+            if (!state.survey.morning) state.survey.morning = { sleepHours: null, answeredAt: null, retrospective: false };
+            if (!state.survey.evening) state.survey.evening = { meditation: false, social: false, outdoors: false, smoked: false, alcohol: false, sedentary: false, unwell: false, answeredAt: null, retrospective: false };
+            
+            // Check morning survey (show on app open if not answered today)
+            if (!state.survey.morning.answeredAt) {
+                document.getElementById('morningSurveyModal').classList.add('open');
+                return;
+            }
+            
+            // Check evening survey (show after 6pm if not answered)
+            if (hour >= 18 && !state.survey.evening.answeredAt) {
+                document.getElementById('eveningSurveyModal').classList.add('open');
+                return;
+            }
+            
+            // Check weekly waist (Mondays)
+            if (now.getDay() === 1) { // Monday
+                const lastWaist = localStorage.getItem('opu_last_waist_date');
+                const today = now.toLocaleDateString('en-CA');
+                if (lastWaist !== today) {
+                    document.getElementById('waistModal').classList.add('open');
+                }
+            }
+        }
+        
+        function submitMorningSurvey(sleepHours) {
+            const targetDate = surveyBackfillMode ? getYesterdayDate() : new Date().toLocaleDateString('en-CA');
+            state.survey.morning = {
+                sleepHours: sleepHours,
+                answeredAt: new Date().toISOString(),
+                retrospective: surveyBackfillMode
+            };
+            surveyBackfillMode = false;
+            saveState();
+            closeModal('morningSurveyModal');
+            updateUI();
+            toast('Morning survey saved!');
+            checkSurveys(); // Check if evening survey needed
+        }
+        
+        // Manual survey triggers (from Summary section)
+        function showMorningSurveyManual() {
+            document.getElementById('morningDateLabel').textContent = 'How did you sleep last night?';
+            document.getElementById('morningSurveyModal').classList.add('open');
+        }
+        
+        function showEveningSurveyManual() {
+            // Reset toggles
+            eveningToggles = { meditation: false, social: false, outdoors: false, smoked: false, alcohol: false, sedentary: false, unwell: false };
+            document.querySelectorAll('.survey-toggle').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('eveningDateLabel').textContent = 'How was today?';
+            document.getElementById('eveningSurveyModal').classList.add('open');
+        }
+        
+        function skipMorningSurvey() {
+            surveyBackfillMode = false;
+            closeModal('morningSurveyModal');
+            checkSurveys();
+        }
+        
+        function showBackfillMorning() {
+            surveyBackfillMode = true;
+            document.getElementById('morningDateLabel').textContent = 'How did you sleep the night before yesterday?';
+        }
+        
+        let eveningToggles = { meditation: false, social: false, outdoors: false, smoked: false, alcohol: false, sedentary: false, unwell: false };
+        
+        function toggleSurvey(field) {
+            eveningToggles[field] = !eveningToggles[field];
+            const btn = document.getElementById('toggle' + field.charAt(0).toUpperCase() + field.slice(1));
+            if (btn) {
+                btn.classList.toggle('active', eveningToggles[field]);
+            }
+        }
+        
+        function submitEveningSurvey() {
+            state.survey.evening = {
+                ...eveningToggles,
+                answeredAt: new Date().toISOString(),
+                retrospective: surveyBackfillMode
+            };
+            surveyBackfillMode = false;
+            eveningToggles = { meditation: false, social: false, outdoors: false, smoked: false, alcohol: false, sedentary: false, unwell: false };
+            saveState();
+            closeModal('eveningSurveyModal');
+            updateUI();
+            toast('Evening survey saved!');
+        }
+        
+        function skipEveningSurvey() {
+            surveyBackfillMode = false;
+            closeModal('eveningSurveyModal');
+        }
+        
+        function showBackfillEvening() {
+            surveyBackfillMode = true;
+            document.getElementById('eveningDateLabel').textContent = 'How was yesterday?';
+        }
+        
+        function saveWaist() {
+            const waist = parseFloat(document.getElementById('waistInput').value);
+            if (!waist || waist < 50 || waist > 200) {
+                toast('Please enter a valid waist measurement');
+                return;
+            }
+            state.waistCm = waist;
+            
+            // Save to history
+            const history = JSON.parse(localStorage.getItem('opu_waist_history') || '[]');
+            history.unshift({ date: new Date().toLocaleDateString('en-CA'), waist: waist });
+            localStorage.setItem('opu_waist_history', JSON.stringify(history.slice(0, 52))); // Keep 1 year
+            localStorage.setItem('opu_last_waist_date', new Date().toLocaleDateString('en-CA'));
+            
+            saveState();
+            closeModal('waistModal');
+            updateUI();
+            toast('Waist measurement saved!');
+        }
+        
+        function getYesterdayDate() {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return d.toLocaleDateString('en-CA');
+        }
+        
+        // Start
+        window.onload = function() {
+            // Check for clear parameter
+            if (window.location.search.includes('clear=1')) {
+                localStorage.clear();
+                window.location.href = window.location.pathname;
+                return;
+            }
+            init();
+            
+            // Check surveys after init
+            setTimeout(checkSurveys, 1000);
+            
+            // iOS keyboard scroll fix
+            const inputField = document.getElementById('inputField');
+            inputField.addEventListener('focus', () => {
+                setTimeout(() => {
+                    inputField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        };
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async></script>
+</body>
+</html>
