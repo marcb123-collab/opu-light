@@ -382,7 +382,7 @@
     <!-- Dashboard -->
     <div class="dashboard">
         <div class="dash-header">
-            <span class="dash-title">Opu Light <span style="font-size:10px;opacity:0.7;">v3</span></span>
+            <span class="dash-title">Opu Light <span style="font-size:10px;opacity:0.7;">v4</span></span>
             <div style="display:flex;align-items:center;gap:8px;">
                 <button onclick="location.reload()" style="width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">↻</button>
                 <button id="syncStatus" onclick="googleSignIn()" style="width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">👤</button>
@@ -534,13 +534,13 @@
                     <!-- Survey Status -->
                     <div style="margin-top:10px;padding-top:8px;border-top:2px solid #eee;">
                         <div style="font-weight:600;margin-bottom:6px;">📋 Today's Surveys</div>
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;" onclick="showMorningSurveyManual()" style="cursor:pointer;">
+                        <div style="display:flex;justify-content:space-between;padding:8px 6px;cursor:pointer;background:#f8f8f8;border-radius:6px;margin-bottom:4px;" onclick="showMorningSurveyManual()">
                             <span>🌅 Morning (Sleep)</span>
-                            <span id="surveyMorningStatus" style="color:#999;">Not done</span>
+                            <span id="surveyMorningStatus" style="color:#667eea;text-decoration:underline;">Not done →</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;" onclick="showEveningSurveyManual()" style="cursor:pointer;">
+                        <div style="display:flex;justify-content:space-between;padding:8px 6px;cursor:pointer;background:#f8f8f8;border-radius:6px;" onclick="showEveningSurveyManual()">
                             <span>🌙 Evening</span>
-                            <span id="surveyEveningStatus" style="color:#999;">Not done</span>
+                            <span id="surveyEveningStatus" style="color:#667eea;text-decoration:underline;">Not done →</span>
                         </div>
                     </div>
                     
@@ -702,7 +702,7 @@
                 <a href="#" onclick="showBackfillMorning();return false;" style="font-size:11px;color:#667eea;">Answer for yesterday instead</a>
             </div>
             <div class="modal-btns" style="margin-top:12px;">
-                <button class="modal-btn cancel" onclick="skipMorningSurvey()">Skip for now</button>
+                <button class="modal-btn cancel" onclick="skipMorningSurvey()" id="morningSkipBtn">Cancel</button>
             </div>
         </div>
     </div>
@@ -732,7 +732,7 @@
                 <a href="#" onclick="showBackfillEvening();return false;" style="font-size:11px;color:#667eea;">Answer for yesterday instead</a>
             </div>
             <div class="modal-btns" style="margin-top:12px;">
-                <button class="modal-btn cancel" onclick="skipEveningSurvey()">Skip</button>
+                <button class="modal-btn cancel" onclick="skipEveningSurvey()" id="eveningSkipBtn">Cancel</button>
                 <button class="modal-btn save" onclick="submitEveningSurvey()">Submit</button>
             </div>
         </div>
@@ -1144,7 +1144,9 @@
                 addFood(food.name, food.cal, food.protein, {
                     sodium: food.sodium || 0, fiber: food.fiber || 0, sugar: food.sugar || 0,
                     potassium: food.potassium || 0, calcium: food.calcium || 0, iron: food.iron || 0,
-                    vitD: food.vitD || 0, magnesium: food.magnesium || 0
+                    vitD: food.vitD || 0, magnesium: food.magnesium || 0,
+                    fatTotal: food.fatTotal || 0, fatSaturated: food.fatSaturated || 0, omegaScore: food.omegaScore || 0,
+                    isVegetable: food.isVegetable, isProcessed: food.isProcessed, isSugary: food.isSugary
                 });
             }
         }
@@ -2058,20 +2060,24 @@
             const morningEl = document.getElementById('surveyMorningStatus');
             const eveningEl = document.getElementById('surveyEveningStatus');
             if (survey.morning && survey.morning.sleepHours) {
-                morningEl.textContent = survey.morning.sleepHours + ' hrs';
+                morningEl.textContent = survey.morning.sleepHours + ' hrs ✓';
                 morningEl.style.color = survey.morning.sleepHours === '7+' ? '#4CAF50' : survey.morning.sleepHours === '5-7' ? '#FF9800' : '#f44336';
+                morningEl.style.textDecoration = 'none';
             } else {
-                morningEl.textContent = 'Not done';
-                morningEl.style.color = '#999';
+                morningEl.textContent = 'Tap to answer →';
+                morningEl.style.color = '#667eea';
+                morningEl.style.textDecoration = 'underline';
             }
             if (survey.evening && survey.evening.answeredAt) {
                 const positives = (survey.evening.meditation ? 1 : 0) + (survey.evening.social ? 1 : 0) + (survey.evening.outdoors ? 1 : 0);
                 const negatives = (survey.evening.smoked ? 1 : 0) + (survey.evening.alcohol ? 1 : 0) + (survey.evening.sedentary ? 1 : 0) + (survey.evening.unwell ? 1 : 0);
-                eveningEl.textContent = '+' + positives + ' / -' + negatives;
+                eveningEl.textContent = '+' + positives + ' / -' + negatives + ' ✓';
                 eveningEl.style.color = negatives === 0 ? '#4CAF50' : '#FF9800';
+                eveningEl.style.textDecoration = 'none';
             } else {
-                eveningEl.textContent = 'Not done';
-                eveningEl.style.color = '#999';
+                eveningEl.textContent = 'Tap to answer →';
+                eveningEl.style.color = '#667eea';
+                eveningEl.style.textDecoration = 'underline';
             }
             
             // Update nutrition summary
